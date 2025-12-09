@@ -153,7 +153,7 @@ struct OnboardingPageView: View {
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.6))
                     .textCase(.uppercase)
-                    .letterSpacing(1.2)
+                    .tracking(1.2)
 
                 VStack(spacing: 10) {
                     ForEach(page.examples, id: \.self) { example in
