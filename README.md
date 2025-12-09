@@ -35,10 +35,13 @@ Voice-first conversational editing powered by AI:
 
 ## 🛠 Tech Stack
 
-- **Platform**: iOS (Swift/SwiftUI)
+- **Platform**: iOS 16+ (Swift/SwiftUI)
+- **Architecture**: MVVM (Model-View-ViewModel)
 - **AI Backend**: Nano Banana (Gemini 3 Pro Image API)
-- **Voice Recognition**: Apple Speech Framework
-- **Backend**: TBD (for template library and user data)
+- **Voice Recognition**: Apple Speech Framework (SFSpeechRecognizer)
+- **Backend**: Supabase (PostgreSQL + Auth + Storage + Edge Functions)
+- **Payments**: StoreKit 2 + RevenueCat
+- **Analytics**: Mixpanel/Amplitude (planned)
 
 ## 📊 Market Opportunity
 
@@ -54,7 +57,46 @@ Voice-first conversational editing powered by AI:
 
 ## 📝 Project Status
 
-🚧 **In Planning Phase** - Validating concept and designing MVP
+✅ **Week 1 Complete** - Foundation built (MVVM architecture, voice recognition, Supabase integration)
+
+🚧 **Next**: Week 2 - Edge Functions, ViewModels, and real AI integration
+
+## 🚀 Getting Started
+
+**New to the project?** Start here:
+- [📘 Quick Start Guide](docs/QUICK-START.md) - Get running in 15 minutes
+- [📋 Product Requirements](docs/PRD.md) - Complete product specification
+- [⚙️ Setup Guide](docs/SETUP.md) - Detailed configuration instructions
+
+**For Development:**
+1. Clone the repository
+2. Follow the [Quick Start Guide](docs/QUICK-START.md) to set up Supabase and API keys
+3. Open `Velo.xcodeproj` in Xcode
+4. Build and run (Cmd+R)
+
+## 📁 Project Structure
+
+```
+Velo/
+├── Models/          # Data models (User, EditSession, Template, BrandKit)
+├── Views/           # SwiftUI views organized by feature
+│   ├── Onboarding/  # Role selection, tutorial
+│   ├── Editing/     # Main editing interface
+│   ├── Templates/   # Template gallery (coming soon)
+│   └── Settings/    # Settings, account (coming soon)
+├── ViewModels/      # Business logic layer (Week 2)
+├── Services/        # Backend integration
+│   ├── VoiceRecognitionService.swift
+│   └── SupabaseService.swift
+├── Utilities/       # Constants, extensions, logger
+└── Resources/       # Assets, fonts
+
+docs/
+├── PRD.md                  # Product Requirements Document
+├── QUICK-START.md          # 15-minute setup guide
+├── SETUP.md                # Detailed setup instructions
+└── database-schema.sql     # Supabase PostgreSQL schema
+```
 
 ## 📄 License
 
