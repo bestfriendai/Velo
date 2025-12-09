@@ -8,159 +8,229 @@
 import SwiftUI
 
 struct RoleSelectionView: View {
-    @State private var selectedRole: UserRole?
+    @StateObject private var supabaseService = SupabaseService.shared
+    @State private var selectedRole: RoleType?
     @State private var showHome = false
+    @State private var isLoading = false
 
-    let roles: [UserRole] = [
-        UserRole(
-            id: "parent",
-            icon: "person.2.fill",
-            title: "Parent",
-            description: "Perfect family photos every time",
-            features: ["Fix closed eyes", "Group photo touch-ups", "Event highlights"],
-            gradient: [Color.pink, Color.orange]
+    // Role display data
+    struct RoleDisplayData {
+        let roleType: RoleType
+        let features: [String]
+    }
+
+    let roleData: [RoleDisplayData] = [
+        RoleDisplayData(
+            roleType: .parent,
+            features: ["Fix closed eyes", "Group photo touch-ups", "Event highlights"]
         ),
-        UserRole(
-            id: "business",
-            icon: "bag.fill",
-            title: "Business Owner",
-            description: "Professional content in seconds",
-            features: ["Product photos", "Social media ready", "Brand consistency"],
-            gradient: [Color.purple, Color.blue]
+        RoleDisplayData(
+            roleType: .salon,
+            features: ["Before/after transformations", "Professional lighting", "Brand logo placement"]
         ),
-        UserRole(
-            id: "realtor",
-            icon: "house.fill",
-            title: "Real Estate",
-            description: "Stunning property photos",
-            features: ["HDR enhancement", "Virtual staging", "Batch processing"],
-            gradient: [Color.blue, Color.cyan]
+        RoleDisplayData(
+            roleType: .realtor,
+            features: ["Property enhancement", "Batch processing", "Sky replacement"]
         ),
-        UserRole(
-            id: "casual",
-            icon: "camera.fill",
-            title: "Just for Fun",
-            description: "Make any photo look amazing",
-            features: ["Creative filters", "Quick enhancements", "Easy sharing"],
-            gradient: [Color.green, Color.mint]
+        RoleDisplayData(
+            roleType: .business,
+            features: ["Product photos", "Social media ready", "Brand consistency"]
+        ),
+        RoleDisplayData(
+            roleType: .explorer,
+            features: ["Creative filters", "Quick enhancements", "Easy sharing"]
         )
     ]
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Constants.Colors.backgroundDark.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
                 VStack(spacing: 12) {
                     Text("Who are you?")
                         .font(.system(size: 36, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(Constants.Colors.textPrimary)
 
                     Text("We'll customize Velo for your needs")
                         .font(.body)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(Constants.Colors.textSecondary)
                 }
                 .padding(.top, 60)
                 .padding(.bottom, 40)
 
                 // Role Cards
                 ScrollView {
-                    VStack(spacing: 16) {
-                        ForEach(roles) { role in
+                    VStack(spacing: Constants.Spacing.md) {
+                        ForEach(roleData, id: \.roleType) { data in
                             RoleCard(
-                                role: role,
-                                isSelected: selectedRole?.id == role.id
+                                roleType: data.roleType,
+                                features: data.features,
+                                isSelected: selectedRole == data.roleType
                             )
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.3)) {
-                                    selectedRole = role
+                                    selectedRole = data.roleType
+                                    Logger.logEvent(Constants.AnalyticsEvent.roleSelected, parameters: ["role": data.roleType.rawValue])
                                 }
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Constants.Spacing.lg)
                 }
 
                 // Continue Button
-                Button(action: {
-                    showHome = true
-                }) {
-                    Text("Continue")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            selectedRole != nil ?
-                            LinearGradient(
-                                colors: selectedRole!.gradient,
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ) :
-                            LinearGradient(
-                                colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.3)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                Button(action: continueToApp) {
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Continue")
+                                .font(.headline)
+                        }
+                    }
+                    .foregroundColor(Constants.Colors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        selectedRole != nil ?
+                        LinearGradient(
+                            colors: gradientForRole(selectedRole!),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ) :
+                        LinearGradient(
+                            colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.3)],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                        .cornerRadius(16)
-                        .shadow(color: selectedRole != nil ? selectedRole!.gradient[0].opacity(0.3) : .clear, radius: 10, x: 0, y: 5)
+                    )
+                    .cornerRadius(Constants.CornerRadius.lg)
+                    .shadow(
+                        color: selectedRole != nil ? gradientForRole(selectedRole!)[0].opacity(0.3) : .clear,
+                        radius: 10,
+                        x: 0,
+                        y: 5
+                    )
                 }
-                .disabled(selectedRole == nil)
+                .disabled(selectedRole == nil || isLoading)
                 .padding(.horizontal, 30)
                 .padding(.vertical, 30)
 
                 // Skip Option
                 Button("Skip for now") {
-                    selectedRole = roles[3] // Default to "Just for Fun"
-                    showHome = true
+                    selectedRole = .explorer
+                    continueToApp()
                 }
                 .font(.subheadline)
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(Constants.Colors.textTertiary)
                 .padding(.bottom, 20)
+                .disabled(isLoading)
             }
         }
         .fullScreenCover(isPresented: $showHome) {
-            HomeView(userRole: selectedRole ?? roles[3])
+            // TODO: Replace with actual HomeView using new architecture
+            HomeView(userRole: OldUserRole(
+                id: selectedRole?.rawValue ?? "explorer",
+                icon: selectedRole?.icon ?? "sparkles",
+                title: selectedRole?.displayName ?? "Explorer",
+                description: selectedRole?.description ?? "",
+                features: [],
+                gradient: gradientForRole(selectedRole ?? .explorer)
+            ))
+        }
+    }
+
+    // MARK: - Helper Functions
+
+    private func continueToApp() {
+        guard let role = selectedRole else { return }
+
+        isLoading = true
+        Logger.info("User selected role: \(role.rawValue)", category: .ui)
+
+        Task {
+            do {
+                // Update user profile with selected role
+                try await supabaseService.updateUserProfile(roleType: role)
+
+                // Mark onboarding as complete
+                UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.hasCompletedOnboarding)
+                UserDefaults.standard.set(role.rawValue, forKey: Constants.UserDefaultsKey.selectedRoleType)
+
+                Logger.logEvent(Constants.AnalyticsEvent.onboardingCompleted, parameters: ["role": role.rawValue])
+
+                await MainActor.run {
+                    isLoading = false
+                    showHome = true
+                }
+            } catch {
+                Logger.error("Failed to save user role", error: error, category: .auth)
+                await MainActor.run {
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    private func gradientForRole(_ role: RoleType) -> [Color] {
+        switch role {
+        case .parent: return Constants.Colors.parentGradient
+        case .salon: return Constants.Colors.salonGradient
+        case .realtor: return Constants.Colors.realtorGradient
+        case .business: return Constants.Colors.businessGradient
+        case .explorer: return Constants.Colors.explorerGradient
         }
     }
 }
 
 struct RoleCard: View {
-    let role: UserRole
+    let roleType: RoleType
+    let features: [String]
     let isSelected: Bool
 
+    private var gradient: [Color] {
+        switch roleType {
+        case .parent: return Constants.Colors.parentGradient
+        case .salon: return Constants.Colors.salonGradient
+        case .realtor: return Constants.Colors.realtorGradient
+        case .business: return Constants.Colors.businessGradient
+        case .explorer: return Constants.Colors.explorerGradient
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: Constants.Spacing.md) {
+            HStack(spacing: Constants.Spacing.md) {
                 // Icon
                 ZStack {
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: role.gradient,
+                                colors: gradient,
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                         .frame(width: 60, height: 60)
 
-                    Image(systemName: role.icon)
+                    Image(systemName: roleType.icon)
                         .font(.system(size: 26))
-                        .foregroundColor(.white)
+                        .foregroundColor(Constants.Colors.textPrimary)
                 }
 
                 // Title & Description
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(role.title)
+                    Text(roleType.displayName)
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(Constants.Colors.textPrimary)
 
-                    Text(role.description)
+                    Text(roleType.description)
                         .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(Constants.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -169,17 +239,17 @@ struct RoleCard: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 28))
-                        .foregroundColor(role.gradient[0])
+                        .foregroundColor(gradient[0])
                 }
             }
 
             // Features
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(role.features, id: \.self) { feature in
-                    HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: Constants.Spacing.sm) {
+                ForEach(features, id: \.self) { feature in
+                    HStack(spacing: Constants.Spacing.sm) {
                         Image(systemName: "checkmark")
                             .font(.caption)
-                            .foregroundColor(role.gradient[0])
+                            .foregroundColor(gradient[0])
 
                         Text(feature)
                             .font(.subheadline)
@@ -189,16 +259,16 @@ struct RoleCard: View {
             }
             .padding(.leading, 76)
         }
-        .padding(20)
+        .padding(Constants.Spacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: Constants.CornerRadius.lg)
                 .fill(Color.white.opacity(isSelected ? 0.15 : 0.05))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20)
+                    RoundedRectangle(cornerRadius: Constants.CornerRadius.lg)
                         .stroke(
                             isSelected ?
                             LinearGradient(
-                                colors: role.gradient,
+                                colors: gradient,
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ) :
@@ -216,7 +286,9 @@ struct RoleCard: View {
     }
 }
 
-struct UserRole: Identifiable {
+// MARK: - Old UserRole for backward compatibility with existing HomeView
+// TODO: Remove once HomeView is refactored
+struct OldUserRole: Identifiable {
     let id: String
     let icon: String
     let title: String
