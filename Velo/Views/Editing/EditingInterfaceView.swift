@@ -42,7 +42,7 @@ struct EditingInterfaceView: View {
                     Spacer()
                     voiceButton
                         .padding(.trailing, 20)
-                        .padding(.bottom: 180)
+                        .padding(.bottom, 180)
                 }
             }
 
