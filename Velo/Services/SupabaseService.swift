@@ -350,19 +350,11 @@ class SupabaseService: ObservableObject {
         )
 
         do {
-            // Call edge function
-            let response = try await supabase.functions.invoke(
+            // Call edge function and decode response directly
+            let editResponse: EditResponse = try await supabase.functions.invoke(
                 "process-edit",
                 options: FunctionInvokeOptions(body: requestBody)
             )
-
-            // Decode response
-            guard let jsonData = response.data else {
-                throw SupabaseError.imageProcessingFailed
-            }
-
-            let decoder = JSONDecoder()
-            let editResponse = try decoder.decode(EditResponse.self, from: jsonData)
 
             Logger.info("Edit completed: \(editResponse.editsRemaining ?? 0) edits remaining", category: Logger.network)
 
