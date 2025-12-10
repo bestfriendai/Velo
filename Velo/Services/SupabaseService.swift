@@ -335,12 +335,19 @@ class SupabaseService: ObservableObject {
         Logger.info("Calling process-edit edge function", category: Logger.network)
 
         // Create request payload
-        let requestBody: [String: Any] = [
-            "user_id": profile.id,
-            "command_text": command,
-            "image_base64": base64Image,
-            "user_tier": profile.subscriptionTier.rawValue
-        ]
+        struct EditRequest: Encodable {
+            let user_id: String
+            let command_text: String
+            let image_base64: String
+            let user_tier: String
+        }
+
+        let requestBody = EditRequest(
+            user_id: profile.id,
+            command_text: command,
+            image_base64: base64Image,
+            user_tier: profile.subscriptionTier.rawValue
+        )
 
         do {
             // Call edge function
