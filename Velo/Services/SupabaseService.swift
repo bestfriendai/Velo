@@ -30,7 +30,7 @@ class SupabaseService: ObservableObject {
         // Initialize Supabase client
         guard let url = URL(string: Constants.API.supabaseURL),
               !Constants.API.supabaseAnonKey.isEmpty else {
-            Logger.error("Supabase credentials not configured", category: .api)
+            Logger.error("Supabase credentials not configured", category: Logger.network)
             fatalError("Supabase credentials missing. Check environment variables.")
         }
 
@@ -39,7 +39,7 @@ class SupabaseService: ObservableObject {
             supabaseKey: Constants.API.supabaseAnonKey
         )
 
-        Logger.info("Supabase client initialized", category: .api)
+        Logger.info("Supabase client initialized", category: Logger.network)
 
         // Load cached user data
         loadLocalUser()
@@ -54,7 +54,7 @@ class SupabaseService: ObservableObject {
 
     private func setupAuthStateListener() async {
         for await state in await supabase.auth.authStateChanges {
-            Logger.debug("Auth state changed: \(state.event)", category: .auth)
+            Logger.debug("Auth state changed: \(state.event)", category: Logger.auth)
 
             switch state.event {
             case .signedIn:
@@ -77,11 +77,11 @@ class SupabaseService: ObservableObject {
 
     /// Create anonymous user session
     func createAnonymousSession() async throws -> String {
-        Logger.info("Creating anonymous session", category: .auth)
+        Logger.info("Creating anonymous session", category: Logger.auth)
 
         // Check if we already have a valid session
         if let session = try? await supabase.auth.session {
-            Logger.info("Found existing session for user: \(session.user.id)", category: .auth)
+            Logger.info("Found existing session for user: \(session.user.id)", category: Logger.auth)
             let userId = session.user.id.uuidString
             self.anonymousUserID = userId
             self.isAuthenticated = true
@@ -96,7 +96,7 @@ class SupabaseService: ObservableObject {
             let session = try await supabase.auth.signInAnonymously()
             let userId = session.user.id.uuidString
 
-            Logger.info("Anonymous session created: \(userId)", category: .auth)
+            Logger.info("Anonymous session created: \(userId)", category: Logger.auth)
 
             self.anonymousUserID = userId
             self.isAuthenticated = true
@@ -122,7 +122,7 @@ class SupabaseService: ObservableObject {
 
             return userId
         } catch {
-            Logger.error("Failed to create anonymous session: \(error.localizedDescription)", category: .auth)
+            Logger.error("Failed to create anonymous session: \(error.localizedDescription)", category: Logger.auth)
             throw SupabaseError.authenticationFailed(error.localizedDescription)
         }
     }
@@ -135,7 +135,7 @@ class SupabaseService: ObservableObject {
 
     /// Sign out
     func signOut() async throws {
-        Logger.info("Signing out user", category: .auth)
+        Logger.info("Signing out user", category: Logger.auth)
 
         do {
             try await supabase.auth.signOut()
@@ -149,9 +149,9 @@ class SupabaseService: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKey.isAnonymousUser)
             UserDefaults.standard.removeObject(forKey: "userProfile")
 
-            Logger.info("User signed out successfully", category: .auth)
+            Logger.info("User signed out successfully", category: Logger.auth)
         } catch {
-            Logger.error("Failed to sign out: \(error.localizedDescription)", category: .auth)
+            Logger.error("Failed to sign out: \(error.localizedDescription)", category: Logger.auth)
             throw SupabaseError.authenticationFailed(error.localizedDescription)
         }
     }
@@ -160,7 +160,7 @@ class SupabaseService: ObservableObject {
 
     /// Create user profile in database
     private func createUserProfile(_ profile: UserProfile) async throws {
-        Logger.info("Creating user profile in database: \(profile.id)", category: .database)
+        Logger.info("Creating user profile in database: \(profile.id)", category: Logger.network)
 
         struct UserProfileRow: Encodable {
             let id: String
@@ -185,16 +185,16 @@ class SupabaseService: ObservableObject {
                 .insert(row)
                 .execute()
 
-            Logger.info("User profile created successfully", category: .database)
+            Logger.info("User profile created successfully", category: Logger.network)
         } catch {
-            Logger.error("Failed to create user profile: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to create user profile: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
 
     /// Load user profile from database
     private func loadUserProfile(userId: String) async throws {
-        Logger.info("Loading user profile from database: \(userId)", category: .database)
+        Logger.info("Loading user profile from database: \(userId)", category: Logger.network)
 
         struct UserProfileRow: Decodable {
             let id: String
@@ -227,9 +227,9 @@ class SupabaseService: ObservableObject {
             self.currentUserProfile = profile
             saveUserProfile(profile)
 
-            Logger.info("User profile loaded successfully", category: .database)
+            Logger.info("User profile loaded successfully", category: Logger.network)
         } catch {
-            Logger.error("Failed to load user profile: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to load user profile: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
@@ -240,7 +240,7 @@ class SupabaseService: ObservableObject {
             throw SupabaseError.notAuthenticated
         }
 
-        Logger.info("Updating user profile: \(profile.id)", category: .database)
+        Logger.info("Updating user profile: \(profile.id)", category: Logger.network)
 
         if let roleType = roleType {
             profile.roleType = roleType
@@ -268,7 +268,7 @@ class SupabaseService: ObservableObject {
                 .eq("id", value: profile.id)
                 .execute()
 
-            Logger.info("User profile updated successfully", category: .database)
+            Logger.info("User profile updated successfully", category: Logger.network)
 
             // Update local cache
             currentUserProfile = profile
@@ -276,7 +276,7 @@ class SupabaseService: ObservableObject {
 
             NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: profile)
         } catch {
-            Logger.error("Failed to update user profile: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to update user profile: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
@@ -287,7 +287,7 @@ class SupabaseService: ObservableObject {
             throw SupabaseError.notAuthenticated
         }
 
-        Logger.info("Incrementing edit count for user: \(profile.id)", category: .database)
+        Logger.info("Incrementing edit count for user: \(profile.id)", category: Logger.network)
 
         do {
             // Call the Supabase function that handles monthly reset logic
@@ -296,9 +296,9 @@ class SupabaseService: ObservableObject {
             // Reload profile to get updated count
             try await loadUserProfile(userId: profile.id)
 
-            Logger.info("Edit count incremented successfully", category: .database)
+            Logger.info("Edit count incremented successfully", category: Logger.network)
         } catch {
-            Logger.error("Failed to increment edit count: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to increment edit count: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
@@ -332,7 +332,7 @@ class SupabaseService: ObservableObject {
 
         let base64Image = imageData.base64EncodedString()
 
-        Logger.info("Calling process-edit edge function", category: .api)
+        Logger.info("Calling process-edit edge function", category: Logger.network)
 
         // Create request payload
         let requestBody: [String: Any] = [
@@ -357,14 +357,14 @@ class SupabaseService: ObservableObject {
             let decoder = JSONDecoder()
             let editResponse = try decoder.decode(EditResponse.self, from: jsonData)
 
-            Logger.info("Edit completed: \(editResponse.editsRemaining ?? 0) edits remaining", category: .api)
+            Logger.info("Edit completed: \(editResponse.editsRemaining ?? 0) edits remaining", category: Logger.network)
 
             // Reload user profile to get updated quota
             try? await loadUserProfile(userId: profile.id)
 
             return editResponse
         } catch {
-            Logger.error("Failed to process edit: \(error.localizedDescription)", category: .api)
+            Logger.error("Failed to process edit: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.imageProcessingFailed
         }
     }
@@ -373,7 +373,7 @@ class SupabaseService: ObservableObject {
 
     /// Fetch templates for user's role
     func fetchTemplates(for roleType: RoleType) async throws -> [Template] {
-        Logger.info("Fetching templates for role: \(roleType.rawValue)", category: .database)
+        Logger.info("Fetching templates for role: \(roleType.rawValue)", category: Logger.network)
 
         struct TemplateRow: Decodable {
             let id: String
@@ -417,19 +417,19 @@ class SupabaseService: ObservableObject {
             // Filter by role
             let filteredTemplates = templates.filter { $0.isAvailableFor(role: roleType) }
 
-            Logger.info("Fetched \(filteredTemplates.count) templates", category: .database)
+            Logger.info("Fetched \(filteredTemplates.count) templates", category: Logger.network)
             return filteredTemplates
         } catch {
-            Logger.error("Failed to fetch templates: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to fetch templates: \(error.localizedDescription)", category: Logger.network)
             // Fallback to local templates
-            Logger.info("Falling back to local templates", category: .database)
+            Logger.info("Falling back to local templates", category: Logger.network)
             return Template.samples.filter { $0.isAvailableFor(role: roleType) }
         }
     }
 
     /// Increment template usage count
     func incrementTemplateUsage(templateId: String) async throws {
-        Logger.info("Incrementing usage count for template: \(templateId)", category: .database)
+        Logger.info("Incrementing usage count for template: \(templateId)", category: Logger.network)
 
         do {
             struct UpdateData: Encodable {
@@ -443,9 +443,9 @@ class SupabaseService: ObservableObject {
                 .eq("id", value: templateId)
                 .execute()
 
-            Logger.info("Template usage count incremented", category: .database)
+            Logger.info("Template usage count incremented", category: Logger.network)
         } catch {
-            Logger.error("Failed to increment template usage: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to increment template usage: \(error.localizedDescription)", category: Logger.network)
             // Non-critical error, don't throw
         }
     }
