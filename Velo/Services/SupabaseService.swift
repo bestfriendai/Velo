@@ -107,20 +107,11 @@ class SupabaseService: ObservableObject {
             UserDefaults.standard.set(userId, forKey: Constants.UserDefaultsKey.localUserID)
             UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.isAnonymousUser)
 
-            // Create user profile in database with default values
-            let profile = UserProfile(
-                id: userId,
-                roleType: .explorer,
-                subscriptionTier: .free,
-                editsThisMonth: 0,
-                editsMonthStart: Date(),
-                createdAt: Date()
-            )
+            // DON'T create profile yet - wait for user to select role
+            // This avoids doing INSERT followed by UPDATE (two database ops)
+            // Instead, we'll do a single INSERT with the correct role in updateUserProfile
 
-            try await createUserProfile(profile)
-
-            self.currentUserProfile = profile
-            saveUserProfile(profile)
+            Logger.info("✅ Session created. Waiting for user to select role before creating profile.", category: Logger.auth)
 
             return userId
         } catch {
@@ -247,24 +238,44 @@ class SupabaseService: ObservableObject {
         }
     }
 
-    /// Update user profile
+    /// Update user profile (or create if doesn't exist)
     func updateUserProfile(roleType: RoleType? = nil, subscriptionTier: SubscriptionTier? = nil) async throws {
-        guard var profile = currentUserProfile else {
+        // Verify auth session exists
+        guard let session = try? await supabase.auth.session else {
+            Logger.error("❌ NO AUTH SESSION! Cannot update profile.", category: Logger.auth)
             throw SupabaseError.notAuthenticated
         }
 
-        // DEBUG: Check auth state before updating
-        do {
-            if let session = try? await supabase.auth.session {
-                Logger.info("✅ Auth session exists. User ID: \(session.user.id)", category: Logger.auth)
-                Logger.info("✅ Session is anonymous: \(session.user.isAnonymous)", category: Logger.auth)
-            } else {
-                Logger.error("❌ NO AUTH SESSION FOUND! User is not authenticated.", category: Logger.auth)
-                throw SupabaseError.notAuthenticated
-            }
+        Logger.info("✅ Auth session verified. User ID: \(session.user.id)", category: Logger.auth)
+        Logger.info("✅ Access token exists: \(session.accessToken.prefix(20))...", category: Logger.auth)
+
+        let userId = session.user.id.uuidString
+
+        // If no profile exists locally, this is the first time - CREATE instead of UPDATE
+        if currentUserProfile == nil {
+            Logger.info("📝 No existing profile. Creating new profile with selected role.", category: Logger.network)
+
+            let newProfile = UserProfile(
+                id: userId,
+                roleType: roleType ?? .explorer,
+                subscriptionTier: subscriptionTier ?? .free,
+                editsThisMonth: 0,
+                editsMonthStart: Date(),
+                createdAt: Date()
+            )
+
+            try await createUserProfile(newProfile)
+            self.currentUserProfile = newProfile
+            saveUserProfile(newProfile)
+
+            Logger.info("✅ Profile created successfully with role: \(newProfile.roleType.rawValue)", category: Logger.network)
+            NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: newProfile)
+            return
         }
 
-        Logger.info("Updating user profile: \(profile.id)", category: Logger.network)
+        // Profile exists - UPDATE it
+        var profile = currentUserProfile!
+        Logger.info("📝 Updating existing profile: \(profile.id)", category: Logger.network)
 
         if let roleType = roleType {
             profile.roleType = roleType
@@ -286,15 +297,13 @@ class SupabaseService: ObservableObject {
         )
 
         do {
-            Logger.info("Executing UPDATE query for profile ID: \(profile.id)", category: Logger.network)
-
             try await supabase.database
                 .from("user_profiles")
                 .update(updateData)
                 .eq("id", value: profile.id)
                 .execute()
 
-            Logger.info("✅ User profile updated successfully", category: Logger.network)
+            Logger.info("✅ Profile updated successfully", category: Logger.network)
 
             // Update local cache
             currentUserProfile = profile
@@ -302,13 +311,11 @@ class SupabaseService: ObservableObject {
 
             NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: profile)
         } catch let error as PostgrestError {
-            Logger.error("❌ Postgrest error updating profile: \(error)", category: Logger.network)
+            Logger.error("❌ Postgrest error: \(error.message)", category: Logger.network)
             Logger.error("❌ Error code: \(error.code ?? "unknown")", category: Logger.network)
-            Logger.error("❌ Error message: \(error.message)", category: Logger.network)
-            Logger.error("❌ This usually means RLS policies are blocking the request", category: Logger.network)
             throw SupabaseError.databaseError("Database error: \(error.message)")
         } catch {
-            Logger.error("❌ Failed to update user profile: \(error)", category: Logger.network)
+            Logger.error("❌ Update failed: \(error)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
