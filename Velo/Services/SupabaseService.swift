@@ -182,14 +182,25 @@ class SupabaseService: ObservableObject {
         )
 
         do {
+            // Verify we have an auth session before inserting
+            guard let session = try? await supabase.auth.session else {
+                Logger.error("❌ Cannot create profile: No auth session!", category: Logger.auth)
+                throw SupabaseError.notAuthenticated
+            }
+            Logger.info("✅ Have auth session for INSERT: \(session.user.id)", category: Logger.auth)
+
             try await supabase.database
                 .from("user_profiles")
                 .insert(row)
                 .execute()
 
-            Logger.info("User profile created successfully", category: Logger.network)
+            Logger.info("✅ User profile created successfully", category: Logger.network)
+        } catch let error as PostgrestError {
+            Logger.error("❌ Postgrest error creating profile: \(error)", category: Logger.network)
+            Logger.error("❌ Error details: \(error.localizedDescription)", category: Logger.network)
+            throw SupabaseError.databaseError(error.localizedDescription)
         } catch {
-            Logger.error("Failed to create user profile: \(error.localizedDescription)", category: Logger.network)
+            Logger.error("❌ Failed to create user profile: \(error)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
@@ -275,21 +286,29 @@ class SupabaseService: ObservableObject {
         )
 
         do {
+            Logger.info("Executing UPDATE query for profile ID: \(profile.id)", category: Logger.network)
+
             try await supabase.database
                 .from("user_profiles")
                 .update(updateData)
                 .eq("id", value: profile.id)
                 .execute()
 
-            Logger.info("User profile updated successfully", category: Logger.network)
+            Logger.info("✅ User profile updated successfully", category: Logger.network)
 
             // Update local cache
             currentUserProfile = profile
             saveUserProfile(profile)
 
             NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: profile)
+        } catch let error as PostgrestError {
+            Logger.error("❌ Postgrest error updating profile: \(error)", category: Logger.network)
+            Logger.error("❌ Error code: \(error.code ?? "unknown")", category: Logger.network)
+            Logger.error("❌ Error message: \(error.message)", category: Logger.network)
+            Logger.error("❌ This usually means RLS policies are blocking the request", category: Logger.network)
+            throw SupabaseError.databaseError("Database error: \(error.message)")
         } catch {
-            Logger.error("Failed to update user profile: \(error.localizedDescription)", category: Logger.network)
+            Logger.error("❌ Failed to update user profile: \(error)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
