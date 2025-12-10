@@ -326,34 +326,47 @@ class SupabaseService: ObservableObject {
         }
 
         // Compress image
-        guard let imageData = image.jpegData(maxSizeMB: Constants.App.maxImageSizeMB),
-              let base64Image = imageData.base64EncodedString().addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw SupabaseError.imageProcessingFailed
         }
 
-        // Create request
-        let editRequest = EditRequest(
-            userId: profile.id,
-            commandText: command,
-            imageBase64: base64Image,
-            userTier: profile.subscriptionTier.rawValue
-        )
+        let base64Image = imageData.base64EncodedString()
 
-        // TODO: Call Supabase Edge Function
-        // For now, return mock response
-        let mockResponse = EditResponse(
-            success: true,
-            editedImageUrl: nil,
-            editsRemaining: profile.editsRemaining,
-            modelUsed: "base",
-            processingTimeMs: 3000,
-            error: nil
-        )
+        Logger.info("Calling process-edit edge function", category: .api)
 
-        // Increment edit count
-        try await incrementEditCount()
+        // Create request payload
+        let requestBody: [String: Any] = [
+            "user_id": profile.id,
+            "command_text": command,
+            "image_base64": base64Image,
+            "user_tier": profile.subscriptionTier.rawValue
+        ]
 
-        return mockResponse
+        do {
+            // Call edge function
+            let response = try await supabase.functions.invoke(
+                "process-edit",
+                options: FunctionInvokeOptions(body: requestBody)
+            )
+
+            // Decode response
+            guard let jsonData = response.data else {
+                throw SupabaseError.imageProcessingFailed
+            }
+
+            let decoder = JSONDecoder()
+            let editResponse = try decoder.decode(EditResponse.self, from: jsonData)
+
+            Logger.info("Edit completed: \(editResponse.editsRemaining ?? 0) edits remaining", category: .api)
+
+            // Reload user profile to get updated quota
+            try? await loadUserProfile(userId: profile.id)
+
+            return editResponse
+        } catch {
+            Logger.error("Failed to process edit: \(error.localizedDescription)", category: .api)
+            throw SupabaseError.imageProcessingFailed
+        }
     }
 
     // MARK: - Templates
