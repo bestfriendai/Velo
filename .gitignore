@@ -100,3 +100,6 @@ CREDENTIALS.md
 
 # Documentation builds
 docs/build/
+
+# Supabase CLI temporary files
+supabase/.temp/
