@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		57F0BBBC2EE954CF0039338F /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 57F0BBBB2EE954CF0039338F /* Supabase */; };
+		57F0BBBF2EE955270039338F /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 57F0BBBE2EE955270039338F /* RevenueCat */; };
+		57F0BBC12EE955270039338F /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 57F0BBC02EE955270039338F /* RevenueCatUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		57F0BB7F2EE5611A0039338F /* Velo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Velo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				57F0BBBF2EE955270039338F /* RevenueCat in Frameworks */,
+				57F0BBBC2EE954CF0039338F /* Supabase in Frameworks */,
+				57F0BBC12EE955270039338F /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +74,9 @@
 			);
 			name = Velo;
 			packageProductDependencies = (
+				57F0BBBB2EE954CF0039338F /* Supabase */,
+				57F0BBBE2EE955270039338F /* RevenueCat */,
+				57F0BBC02EE955270039338F /* RevenueCatUI */,
 			);
 			productName = Velo;
 			productReference = 57F0BB7F2EE5611A0039338F /* Velo.app */;
@@ -94,6 +106,10 @@
 			);
 			mainGroup = 57F0BB762EE5611A0039338F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				57F0BBBA2EE954CF0039338F /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				57F0BBBD2EE955270039338F /* XCRemoteSwiftPackageReference "purchases-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 57F0BB802EE5611A0039338F /* Products */;
 			projectDirPath = "";
@@ -250,6 +266,10 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -292,6 +312,10 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -345,6 +369,43 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		57F0BBBA2EE954CF0039338F /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+		57F0BBBD2EE955270039338F /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.50.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		57F0BBBB2EE954CF0039338F /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 57F0BBBA2EE954CF0039338F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		57F0BBBE2EE955270039338F /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 57F0BBBD2EE955270039338F /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+		57F0BBC02EE955270039338F /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 57F0BBBD2EE955270039338F /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCatUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 57F0BB772EE5611A0039338F /* Project object */;
 }

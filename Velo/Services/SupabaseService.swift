@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import Combine
 
 /// Supabase service for backend API calls
 /// NOTE: This is a placeholder implementation. Full integration requires Supabase Swift SDK

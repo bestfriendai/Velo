@@ -8,6 +8,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import Combine
 
 /// Voice recognition service wrapping SFSpeechRecognizer
 @MainActor
