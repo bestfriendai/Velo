@@ -20,22 +20,22 @@ CREATE POLICY "Users can create own profile"
 ON public.user_profiles
 FOR INSERT
 TO authenticated
-WITH CHECK (auth.uid()::text = id);
+WITH CHECK (auth.uid() = id::uuid);
 
 -- 2. Allow users to VIEW their own profile
 CREATE POLICY "Users can view own profile"
 ON public.user_profiles
 FOR SELECT
 TO authenticated
-USING (auth.uid()::text = id);
+USING (auth.uid() = id::uuid);
 
 -- 3. Allow users to UPDATE their own profile
 CREATE POLICY "Users can update own profile"
 ON public.user_profiles
 FOR UPDATE
 TO authenticated
-USING (auth.uid()::text = id)
-WITH CHECK (auth.uid()::text = id);
+USING (auth.uid() = id::uuid)
+WITH CHECK (auth.uid() = id::uuid);
 
 -- ============================================================================
 -- TEMPLATES TABLE POLICIES (Public Read)
@@ -57,14 +57,14 @@ CREATE POLICY "Users can view own edits"
 ON public.edits
 FOR SELECT
 TO authenticated
-USING (auth.uid()::text = user_id);
+USING (auth.uid() = user_id::uuid);
 
 -- Allow users to create their own edit records
 CREATE POLICY "Users can create own edits"
 ON public.edits
 FOR INSERT
 TO authenticated
-WITH CHECK (auth.uid()::text = user_id);
+WITH CHECK (auth.uid() = user_id::uuid);
 ```
 
 ---
