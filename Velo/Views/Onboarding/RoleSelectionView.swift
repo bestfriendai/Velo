@@ -149,7 +149,7 @@ struct RoleSelectionView: View {
         guard let role = selectedRole else { return }
 
         isLoading = true
-        Logger.info("User selected role: \(role.rawValue)", category: .ui)
+        Logger.info("User selected role: \(role.rawValue)", category: Logger.ui)
 
         Task {
             do {
@@ -167,7 +167,7 @@ struct RoleSelectionView: View {
                     showHome = true
                 }
             } catch {
-                Logger.error("Failed to save user role", error: error, category: .auth)
+                Logger.error("Failed to save user role", error: error, category: Logger.auth)
                 await MainActor.run {
                     isLoading = false
                 }

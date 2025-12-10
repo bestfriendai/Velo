@@ -96,7 +96,7 @@ struct ContentView: View {
                     case .roleSelection:
                         RoleSelectionView()
                     case .home:
-                        HomeView(userRole: UserRole(
+                        HomeView(userRole: OldUserRole(
                             id: "parent",
                             icon: "person.2.fill",
                             title: "Parent",
