@@ -153,10 +153,17 @@ struct RoleSelectionView: View {
 
         Task {
             do {
-                // Update user profile with selected role
-                try await supabaseService.updateUserProfile(roleType: role)
+                // STEP 1: Create anonymous session FIRST
+                Logger.info("Creating anonymous session for user...", category: Logger.auth)
+                let userId = try await supabaseService.createAnonymousSession()
+                Logger.info("✅ Session created: \(userId)", category: Logger.auth)
 
-                // Mark onboarding as complete
+                // STEP 2: Update user profile with selected role
+                Logger.info("Updating profile with role: \(role.rawValue)", category: Logger.auth)
+                try await supabaseService.updateUserProfile(roleType: role)
+                Logger.info("✅ Profile updated successfully", category: Logger.auth)
+
+                // STEP 3: Mark onboarding as complete
                 UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.hasCompletedOnboarding)
                 UserDefaults.standard.set(role.rawValue, forKey: Constants.UserDefaultsKey.selectedRoleType)
 
@@ -167,9 +174,10 @@ struct RoleSelectionView: View {
                     showHome = true
                 }
             } catch {
-                Logger.error("Failed to save user role", error: error, category: Logger.auth)
+                Logger.error("Failed to complete onboarding", error: error, category: Logger.auth)
                 await MainActor.run {
                     isLoading = false
+                    // TODO: Show error alert to user
                 }
             }
         }
