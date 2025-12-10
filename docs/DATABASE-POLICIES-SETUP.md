@@ -2,11 +2,25 @@
 
 ## Issue: "You must be signed in to perform this action"
 
-This error occurs when trying to update user profiles because the database doesn't have the correct RLS policies for anonymous users.
+This error occurs when trying to update user profiles because **anonymous authentication is not enabled** or the database doesn't have the correct RLS policies.
 
 ---
 
-## Quick Fix: Run These SQL Commands
+## ⚠️ CRITICAL FIRST STEP: Enable Anonymous Authentication
+
+**You MUST do this first before anything else will work!**
+
+1. Go to [Authentication Settings](https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/auth/settings)
+2. Scroll down to **"Anonymous sign-ins"**
+3. Click the **toggle to turn it ON** (it should be green/enabled)
+4. Click **"Save"** at the bottom of the page
+5. **Verify it's enabled**: Refresh the page and confirm the toggle is still ON
+
+**If you skip this step, the app will NOT work!**
+
+---
+
+## Step 2: Run These SQL Commands
 
 Go to [Supabase SQL Editor](https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/sql/new) and run:
 
@@ -121,23 +135,39 @@ Then re-run the CREATE POLICY commands above.
 
 ---
 
-## Enable Anonymous Authentication
+## Step 3: Verify Anonymous Auth is Working
 
-Also make sure anonymous auth is enabled in Supabase:
+After enabling anonymous sign-ins, verify it's working:
 
-1. Go to [Authentication Settings](https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/auth/settings)
-2. Scroll to **"Anonymous sign-ins"**
-3. Make sure it's **ENABLED** (toggle should be ON)
-4. Click **"Save"** if you made changes
+1. Open the app in Xcode and look at the **console logs**
+2. You should see these messages:
+   ```
+   🔄 Attempting to sign in anonymously...
+   ✅ Anonymous session created successfully! User ID: [UUID]
+   ✅ User is anonymous: true
+   ```
+
+3. If you see `❌ NO AUTH SESSION FOUND!` then anonymous auth is **NOT** enabled in Supabase. Go back to Step 1.
+
+4. Check the Supabase dashboard:
+   - Go to [Authentication > Users](https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/auth/users)
+   - You should see a new user with an email like `anonymous-XXXXX@supabase.com`
+   - If you don't see any users, anonymous auth is **NOT** enabled
 
 ---
 
-## Test After Applying
+## Step 4: Test the Full Flow
 
-1. **Clean the app data** (delete and reinstall the app, or reset simulator)
+1. **Delete the app from simulator** (press and hold app icon → Remove App)
 2. **Run the app again** (⌘+R in Xcode)
 3. **Complete onboarding** and select a role
-4. The error should be gone!
+4. **Check console logs** - you should see:
+   ```
+   ✅ Auth session exists. User ID: [UUID]
+   ✅ Session is anonymous: true
+   User profile updated successfully
+   ```
+5. The error should be gone!
 
 ---
 

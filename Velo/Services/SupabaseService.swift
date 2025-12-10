@@ -93,10 +93,12 @@ class SupabaseService: ObservableObject {
 
         // Create new anonymous session
         do {
+            Logger.info("🔄 Attempting to sign in anonymously...", category: Logger.auth)
             let session = try await supabase.auth.signInAnonymously()
             let userId = session.user.id.uuidString
 
-            Logger.info("Anonymous session created: \(userId)", category: Logger.auth)
+            Logger.info("✅ Anonymous session created successfully! User ID: \(userId)", category: Logger.auth)
+            Logger.info("✅ User is anonymous: \(session.user.isAnonymous)", category: Logger.auth)
 
             self.anonymousUserID = userId
             self.isAuthenticated = true
@@ -238,6 +240,17 @@ class SupabaseService: ObservableObject {
     func updateUserProfile(roleType: RoleType? = nil, subscriptionTier: SubscriptionTier? = nil) async throws {
         guard var profile = currentUserProfile else {
             throw SupabaseError.notAuthenticated
+        }
+
+        // DEBUG: Check auth state before updating
+        do {
+            if let session = try? await supabase.auth.session {
+                Logger.info("✅ Auth session exists. User ID: \(session.user.id)", category: Logger.auth)
+                Logger.info("✅ Session is anonymous: \(session.user.isAnonymous)", category: Logger.auth)
+            } else {
+                Logger.error("❌ NO AUTH SESSION FOUND! User is not authenticated.", category: Logger.auth)
+                throw SupabaseError.notAuthenticated
+            }
         }
 
         Logger.info("Updating user profile: \(profile.id)", category: Logger.network)
