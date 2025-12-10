@@ -1,0 +1,13 @@
+// Configuration file template for Velo
+// 1. Copy this file to Config.xcconfig (remove .template)
+// 2. Fill in your actual Supabase credentials
+// 3. Add Config.xcconfig to your Xcode project
+// 4. Set it as the base configuration in Project Settings > Info > Configurations
+
+// Supabase Configuration
+// Get these from: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/settings/api
+SUPABASE_URL = https:/$()/YOUR_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY = YOUR_ANON_KEY_HERE
+
+// RevenueCat (Optional for MVP)
+REVENUECAT_API_KEY =

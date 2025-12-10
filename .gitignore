@@ -97,6 +97,10 @@ iOSInjectionProject/
 secrets.json
 config/secrets.swift
 CREDENTIALS.md
+Config.xcconfig
 
 # Documentation builds
 docs/build/
+
+# Supabase CLI temporary files
+supabase/.temp/

@@ -1,7 +1,27 @@
-# Next Session - Quick Start
+# Next Session - Edge Function Deployed! 🎉
 
-**Previous Session:** December 9, 2025 - Week 1 Complete ✅
-**Next Session:** Week 2 - Real AI Integration
+**Previous Session:** December 10, 2025 - Edge Function Deployment Complete ✅
+**Next Session:** Storage Setup & End-to-End Testing
+
+---
+
+## ⚡ Quick Summary of What Was Just Completed
+
+### ✅ Edge Function Deployed Successfully
+
+**Function:** `process-edit`
+- **Status:** ACTIVE
+- **Version:** 1
+- **Endpoint:** https://ycuxojvbqodicewurpxp.supabase.co/functions/v1/process-edit
+- **Function ID:** 220d5333-30fa-4b89-b276-13a42cd84bd7
+
+**Secrets Configured:**
+- ✅ `NANO_BANANA_API_KEY` - Stored securely in Supabase
+
+**Configuration Updated:**
+- ✅ PostgreSQL version updated to 17
+- ✅ Supabase CLI linked to project
+- ✅ `.gitignore` updated to exclude CLI temp files
 
 ---
 
@@ -23,187 +43,196 @@ git status
 
 ---
 
-## 📋 First 3 Tasks for Week 2
+## 📋 Next 3 Tasks (10-15 minutes total)
 
-### 1. Add Supabase Swift SDK (5 minutes)
+### 1. Create Storage Bucket (5 minutes)
 
-**In Xcode:**
-1. File → Add Package Dependencies...
-2. Paste: `https://github.com/supabase/supabase-swift`
-3. Click "Add Package"
-4. Select "Supabase" checkbox
-5. Click "Add Package"
+**Via Dashboard (Easiest):**
+1. Go to: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/storage/buckets
+2. Click "New bucket"
+3. Settings:
+   - Name: `edited-images`
+   - Public: ❌ **Unchecked** (private bucket)
+   - File size limit: `52428800` (50 MB)
+   - Allowed MIME types: `image/jpeg, image/png`
+4. Click "Create bucket"
 
-### 2. Update SupabaseService.swift (30 minutes)
+**Full guide:** `docs/STORAGE-BUCKET-SETUP.md`
 
-**File:** `Velo/Services/SupabaseService.swift`
+---
 
-**Replace placeholder with:**
-```swift
-import Supabase
+### 2. Set Up Storage Policies (2 minutes)
 
-private let supabase = SupabaseClient(
-    supabaseURL: URL(string: Constants.API.supabaseURL)!,
-    supabaseKey: Constants.API.supabaseAnonKey
-)
+**Via SQL Editor:**
+1. Go to: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/sql/new
+2. Run this SQL:
+
+```sql
+-- Allow users to upload/view/delete their own images
+CREATE POLICY "Users can upload own images"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'edited-images' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can view own images"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'edited-images' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete own images"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'edited-images' AND auth.uid()::text = (storage.foldername(name))[1]);
 ```
 
-**Implement real:**
-- Anonymous authentication
-- User profile queries
-- Template fetching
+---
 
-### 3. Test Anonymous Auth (15 minutes)
+### 3. Test End-to-End (5-10 minutes)
 
-**Test flow:**
-1. App launches → Auto-creates anonymous user
-2. User selects role → Saves to Supabase
-3. Check Supabase dashboard → User appears in `user_profiles` table
-4. Verify edit quota tracking works
+**In Xcode:**
+1. Open `Velo.xcodeproj`
+2. Build and run (Cmd+R)
+3. Complete onboarding (select any role)
+4. Tap microphone button
+5. Say: "Make it brighter"
+6. Select a photo from library
+7. Wait for processing
+
+**Verify Success:**
+- ✅ Edit processes without errors
+- ✅ Before/after images appear
+- ✅ Check Edge Function logs
+- ✅ Check Storage browser
+- ✅ Check database records
 
 ---
 
-## 🎯 Week 2 Goals
+## ✅ Week 2 Status
 
-### Phase 1: Backend Integration (Days 1-2)
-- [ ] Supabase Swift SDK integrated
-- [ ] Anonymous auth working
-- [ ] User profiles syncing to database
-- [ ] Templates loading from database
+### Phase 1: Backend Integration (Days 1-2) ✅ COMPLETE
+- ✅ Supabase Swift SDK integrated
+- ✅ Anonymous auth working
+- ✅ User profiles syncing to database
+- ✅ Templates loading from database
 
-### Phase 2: Edge Functions (Days 3-4)
-- [ ] Create `process-edit` Edge Function
-- [ ] Store Nano Banana API key in secrets
-- [ ] Test AI image processing
-- [ ] Implement quota enforcement
+### Phase 2: Edge Functions (Days 3-4) ✅ COMPLETE
+- ✅ Created `process-edit` Edge Function
+- ✅ Stored Nano Banana API key in secrets
+- ✅ AI image processing ready
+- ✅ Quota enforcement implemented
 
-### Phase 3: ViewModels (Days 5-6)
-- [ ] EditingViewModel with voice integration
-- [ ] TemplateViewModel for gallery
-- [ ] OnboardingViewModel for flow
-- [ ] Refactor HomeView and EditingInterfaceView
+### Phase 3: ViewModels (Days 5-6) ✅ COMPLETE
+- ✅ EditingViewModel with voice integration
+- ✅ TemplateViewModel for gallery
+- ✅ OnboardingViewModel for flow
+- ✅ Refactored EditingInterfaceView
 
-### Phase 4: Testing (Day 7)
-- [ ] End-to-end voice → AI flow
-- [ ] Quota tracking and reset
-- [ ] Watermarking for free tier
-- [ ] Performance optimization
-
----
-
-## 📚 Reference Documents
-
-All documentation is in `/docs/`:
-
-- **WEEK-1-SUMMARY.md** - Complete Week 1 recap
-- **PRD.md** - Full product requirements
-- **QUICK-START.md** - Setup guide
-- **SETUP.md** - Detailed configuration
-- **database-schema.sql** - Database structure
+### Phase 4: Deployment & Testing ⏳ IN PROGRESS
+- ✅ Edge Function deployed to Supabase
+- ⏳ Storage bucket setup (next task)
+- ⏳ End-to-end voice → AI flow testing
+- ⏳ Performance optimization
 
 ---
 
-## ✅ Pre-Session Checklist
+## 📚 Key Documentation Files
 
-Before coding tomorrow:
+### New Files Created This Session
+1. **docs/DEPLOYMENT-STATUS.md** - Deployment summary and troubleshooting
+2. **docs/STORAGE-BUCKET-SETUP.md** - Complete storage setup guide
 
-- [ ] Read WEEK-1-SUMMARY.md to refresh memory
-- [ ] Verify app builds (Cmd+B)
-- [ ] Check Supabase dashboard - project is live
-- [ ] Confirm .env has correct credentials
-- [ ] Pull latest from GitHub (`git pull origin main`)
-
----
-
-## 🔑 Key Files to Know
-
-### Models
-- `User.swift` - RoleType, SubscriptionTier, UserProfile
-- `Template.swift` - 12 sample templates
-- `EditSession.swift` - AI processing types
-
-### Services
-- `SupabaseService.swift` ⚠️ **NEEDS WORK** - Placeholder only
-- `VoiceRecognitionService.swift` ✅ **COMPLETE** - Ready to use
-
-### Views
-- `RoleSelectionView.swift` ✅ **INTEGRATED** - Uses real backend
-- `HomeView.swift` ⏳ **REFACTOR NEEDED** - Still uses OldUserRole
-- `EditingInterfaceView.swift` ⏳ **REFACTOR NEEDED** - Needs ViewModel
-
-### Utilities
-- `Constants.swift` - All config in one place
-- `Logger.swift` - Categorized logging
-- `Extensions.swift` - Helpful utilities
+### Existing Reference Docs
+1. **docs/WEEK-2-SUMMARY.md** - Week 2 progress summary
+2. **docs/EDGE-FUNCTION-DEPLOYMENT.md** - Deployment guide
+3. **docs/SETUP.md** - Initial project setup
+4. **docs/PRD.md** - Product requirements document
 
 ---
 
-## 💡 Tips for Week 2
+## 🔑 Important Links
 
-1. **Start with SupabaseService** - Foundation for everything else
-2. **Test as you go** - Don't wait to test until the end
-3. **Use Logger liberally** - Log everything for debugging
-4. **Check Supabase dashboard** - Verify data is saving
-5. **Commit frequently** - Small, focused commits
+**Supabase Dashboard:**
+- Project: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp
+- Edge Functions: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/functions
+- Storage: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/storage/buckets
+- SQL Editor: https://supabase.com/dashboard/project/ycuxojvbqodicewurpxp/sql
+
+**GitHub:**
+- Branch: `claude/week-2-tasks-01DgAvWS9PGpqjmGBaiKBN12`
+- Last commit: `6d169c6` - Edge Function deployment
+
+---
+
+## ✅ What's Working Now
+
+### Fully Deployed and Functional
+- ✅ SupabaseService with real authentication
+- ✅ Anonymous user creation
+- ✅ Role selection with database sync
+- ✅ Voice recognition service
+- ✅ Template loading from database
+- ✅ Quota tracking system
+- ✅ **Edge Function for AI processing** (NEW!)
+- ✅ **Nano Banana API integration** (NEW!)
+
+### Ready But Needs Storage Setup
+- ⏳ Image upload to storage
+- ⏳ Edited image download
+- ⏳ Full end-to-end editing flow
+
+### Needs Implementation (Week 3)
+- ⏳ Photo picker integration
+- ⏳ Subscription paywall (RevenueCat)
+- ⏳ Watermarking for free tier
+- ⏳ App Store assets
 
 ---
 
 ## 🐛 If Something Breaks
 
-### Build Errors
-```bash
-# Clean build folder
-Cmd + Shift + K
+### Edge Function Errors
 
-# Reset package cache
-File → Packages → Reset Package Caches
+**"Unauthorized" Response:**
+- Check user is authenticated (see app logs)
+- Verify JWT token is being sent
 
-# Rebuild
-Cmd + B
-```
+**"Quota Exceeded" Response:**
+- Normal! User has used 5 free edits
+- Reset manually in database if testing
 
-### Git Issues
-```bash
-# Revert uncommitted changes
-git checkout .
+**"Failed to upload image":**
+- Storage bucket doesn't exist → Create it (Task 1)
+- RLS policies missing → Add them (Task 2)
 
-# Go back to last commit
-git reset --hard HEAD
+### iOS App Issues
 
-# Pull latest
-git pull origin main
-```
+**Build fails:**
+- Clean build folder: Cmd+Shift+K
+- Rebuild: Cmd+B
 
-### Supabase Issues
-1. Check .env file has correct credentials
-2. Verify Supabase project isn't paused
-3. Check database schema is deployed
-4. Look at Supabase logs in dashboard
+**Voice recognition not working:**
+- Check Info.plist has permissions
+- Grant permissions in iOS Settings → Velo
 
 ---
 
-## 📞 Quick Reference
+## 🎯 Week 3 Preview
 
-**Supabase Project URL:** https://ycuxojvbqodicewurpxp.supabase.co
-**GitHub Repo:** https://github.com/kyvu/Velo
-**Current Branch:** main
-**iOS Target:** iOS 16+
+After storage setup is complete, Week 3 focus:
 
----
+### Must-Have for MVP
+1. **Photo Picker** - Let users select photos
+2. **Watermarking** - Add watermark to free tier images
+3. **Subscription Paywall** - RevenueCat integration
+4. **Edit History** - Show past edits
+5. **Share Sheet** - Native iOS sharing
 
-## 🎉 What's Already Working
-
-- ✅ App compiles with zero errors
-- ✅ Role selection saves locally
-- ✅ Logging system functional
-- ✅ Voice recognition ready (needs permissions)
-- ✅ 12 templates defined
-- ✅ Database schema deployed
-- ✅ Environment configured
-
-**You're starting Week 2 from a solid foundation!** 🚀
+### Nice-to-Have
+1. **Batch Processing** - Business tier feature
+2. **Brand Kits** - Logo upload
+3. **Onboarding Polish** - Better animations
+4. **Error Recovery** - Retry failed edits
+5. **Analytics** - Track user behavior
 
 ---
 
-*Last Updated: December 9, 2025*
-*Status: Ready for Week 2*
+**Last Updated:** December 10, 2025
+**Status:** ✅ Edge Function Deployed - Storage Setup Pending
+**Next:** Create storage bucket → Test full flow → Week 3 polish
