@@ -61,7 +61,7 @@ class TemplateViewModel: ObservableObject {
     private func loadUserRole() async {
         if let profile = supabaseService.currentUserProfile {
             currentUserRole = profile.roleType
-            Logger.info("Loaded user role: \(currentUserRole.rawValue)", category: .app)
+            Logger.info("Loaded user role: \(currentUserRole.rawValue)", category: Logger.general)
         }
     }
 
@@ -72,16 +72,16 @@ class TemplateViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
-        Logger.info("Loading templates for role: \(currentUserRole.rawValue)", category: .database)
+        Logger.info("Loading templates for role: \(currentUserRole.rawValue)", category: Logger.network)
 
         do {
             let loadedTemplates = try await supabaseService.fetchTemplates(for: currentUserRole)
             self.templates = loadedTemplates
             filterTemplates(query: searchQuery)
 
-            Logger.info("Loaded \(loadedTemplates.count) templates", category: .database)
+            Logger.info("Loaded \(loadedTemplates.count) templates", category: Logger.network)
         } catch {
-            Logger.error("Failed to load templates: \(error.localizedDescription)", category: .database)
+            Logger.error("Failed to load templates: \(error.localizedDescription)", category: Logger.network)
             errorMessage = "Failed to load templates: \(error.localizedDescription)"
 
             // Fallback to sample templates
@@ -125,7 +125,7 @@ class TemplateViewModel: ObservableObject {
 
     /// Apply a template (returns the prompt text to use)
     func applyTemplate(_ template: Template) async -> String {
-        Logger.info("Applying template: \(template.name)", category: .editing)
+        Logger.info("Applying template: \(template.name)", category: Logger.general)
 
         // Increment usage count in background
         Task {

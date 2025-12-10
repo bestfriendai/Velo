@@ -99,7 +99,7 @@ class EditingViewModel: ObservableObject {
 
     /// Start voice recording
     func startVoiceRecording() async {
-        Logger.info("Starting voice recording", category: .voice)
+        Logger.info("Starting voice recording", category: Logger.voice)
 
         // Request authorization if needed
         if voiceService.authorizationStatus != .authorized {
@@ -113,14 +113,14 @@ class EditingViewModel: ObservableObject {
         do {
             try await voiceService.startRecording()
         } catch {
-            Logger.error("Failed to start recording: \(error.localizedDescription)", category: .voice)
+            Logger.error("Failed to start recording: \(error.localizedDescription)", category: Logger.voice)
             errorMessage = "Failed to start recording: \(error.localizedDescription)"
         }
     }
 
     /// Stop voice recording
     func stopVoiceRecording() {
-        Logger.info("Stopping voice recording", category: .voice)
+        Logger.info("Stopping voice recording", category: Logger.voice)
         voiceService.stopRecording()
 
         // Auto-send the transcribed message
@@ -149,7 +149,7 @@ class EditingViewModel: ObservableObject {
         guard !messageText.isEmpty else { return }
 
         let userMessage = messageText
-        Logger.info("Sending message: \(userMessage)", category: .editing)
+        Logger.info("Sending message: \(userMessage)", category: Logger.general)
 
         // Add user message to chat
         messages.append(ChatMessage(text: userMessage, isUser: true))
@@ -184,7 +184,7 @@ class EditingViewModel: ObservableObject {
         ))
 
         do {
-            Logger.info("Processing edit request", category: .editing)
+            Logger.info("Processing edit request", category: Logger.general)
 
             let response = try await supabaseService.processEdit(
                 command: command,
@@ -207,13 +207,13 @@ class EditingViewModel: ObservableObject {
                     isUser: false
                 ))
 
-                Logger.info("Edit completed successfully", category: .editing)
+                Logger.info("Edit completed successfully", category: Logger.general)
             } else {
                 throw SupabaseError.imageProcessingFailed
             }
 
         } catch {
-            Logger.error("Edit failed: \(error.localizedDescription)", category: .editing)
+            Logger.error("Edit failed: \(error.localizedDescription)", category: Logger.general)
             errorMessage = error.localizedDescription
 
             // Update chat with error
@@ -227,10 +227,10 @@ class EditingViewModel: ObservableObject {
     }
 
     private func downloadEditedImage(from urlString: String) async {
-        Logger.info("Downloading edited image", category: .editing)
+        Logger.info("Downloading edited image", category: Logger.general)
 
         guard let url = URL(string: urlString) else {
-            Logger.error("Invalid image URL", category: .editing)
+            Logger.error("Invalid image URL", category: Logger.general)
             return
         }
 
@@ -239,10 +239,10 @@ class EditingViewModel: ObservableObject {
             if let image = UIImage(data: data) {
                 self.editedImage = image
                 showBeforeAfter = true
-                Logger.info("Edited image downloaded successfully", category: .editing)
+                Logger.info("Edited image downloaded successfully", category: Logger.general)
             }
         } catch {
-            Logger.error("Failed to download image: \(error.localizedDescription)", category: .editing)
+            Logger.error("Failed to download image: \(error.localizedDescription)", category: Logger.general)
             errorMessage = "Failed to download edited image"
         }
     }
