@@ -58,7 +58,7 @@
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "SUPABASE_ANON_KEY"
-            value = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdXhvanZicW9kaWNld3VycHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM4MDkwMTUsImV4cCI6MjA0OTM4NTAxNX0.BK_ZbLjdHEIJRKtVLKdpPXXkqr7s_YJLCq4MxgZrcN8"
+            value = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdXhvanZicW9kaWNld3VycHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMTkwMTMsImV4cCI6MjA4MDg5NTAxM30.tzjEVaADvhUVH-rDX-Q3tzLeERh0tpDRuF-loR7HhuA"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
