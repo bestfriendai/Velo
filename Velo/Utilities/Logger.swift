@@ -23,33 +23,37 @@ enum Logger {
     // MARK: - Logging Functions
 
     /// Log debug message
-    static func debug(_ message: String, category: os.Logger = .general, file: String = #file, function: String = #function, line: Int = #line) {
+    static func debug(_ message: String, category: os.Logger? = nil, file: String = #file, function: String = #function, line: Int = #line) {
         #if DEBUG
         let fileName = (file as NSString).lastPathComponent
-        category.debug("\(fileName) [\(function):\(line)] \(message)")
+        let logger = category ?? general
+        logger.debug("\(fileName) [\(function):\(line)] \(message)")
         #endif
     }
 
     /// Log info message
-    static func info(_ message: String, category: os.Logger = .general) {
-        category.info("\(message)")
+    static func info(_ message: String, category: os.Logger? = nil) {
+        let logger = category ?? general
+        logger.info("\(message)")
     }
 
     /// Log error message
-    static func error(_ message: String, error: Error? = nil, category: os.Logger = .general) {
+    static func error(_ message: String, error: Error? = nil, category: os.Logger? = nil) {
+        let logger = category ?? general
         if let error = error {
-            category.error("\(message): \(error.localizedDescription)")
+            logger.error("\(message): \(error.localizedDescription)")
         } else {
-            category.error("\(message)")
+            logger.error("\(message)")
         }
     }
 
     /// Log fault message (critical errors)
-    static func fault(_ message: String, error: Error? = nil, category: os.Logger = .general) {
+    static func fault(_ message: String, error: Error? = nil, category: os.Logger? = nil) {
+        let logger = category ?? general
         if let error = error {
-            category.fault("\(message): \(error.localizedDescription)")
+            logger.fault("\(message): \(error.localizedDescription)")
         } else {
-            category.fault("\(message)")
+            logger.fault("\(message)")
         }
     }
 
