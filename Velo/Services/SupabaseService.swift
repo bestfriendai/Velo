@@ -8,9 +8,9 @@
 import Foundation
 import UIKit
 import Combine
+import Supabase
 
 /// Supabase service for backend API calls
-/// NOTE: This is a placeholder implementation. Full integration requires Supabase Swift SDK
 @MainActor
 class SupabaseService: ObservableObject {
     // MARK: - Singleton
@@ -21,48 +21,110 @@ class SupabaseService: ObservableObject {
     @Published var currentUserProfile: UserProfile?
 
     // MARK: - Private Properties
+    private let supabase: SupabaseClient
     private var authToken: String?
     private var anonymousUserID: String?
 
     // MARK: - Initialization
     private init() {
+        // Initialize Supabase client
+        guard let url = URL(string: Constants.API.supabaseURL),
+              !Constants.API.supabaseAnonKey.isEmpty else {
+            Logger.error("Supabase credentials not configured", category: .api)
+            fatalError("Supabase credentials missing. Check environment variables.")
+        }
+
+        self.supabase = SupabaseClient(
+            supabaseURL: url,
+            supabaseKey: Constants.API.supabaseAnonKey
+        )
+
+        Logger.info("Supabase client initialized", category: .api)
+
+        // Load cached user data
         loadLocalUser()
+
+        // Set up auth state listener
+        Task {
+            await setupAuthStateListener()
+        }
+    }
+
+    // MARK: - Auth State Listener
+
+    private func setupAuthStateListener() async {
+        for await state in await supabase.auth.authStateChanges {
+            Logger.debug("Auth state changed: \(state.event)", category: .auth)
+
+            switch state.event {
+            case .signedIn:
+                if let user = state.session?.user {
+                    self.isAuthenticated = true
+                    self.anonymousUserID = user.id.uuidString
+                    try? await loadUserProfile(userId: user.id.uuidString)
+                }
+            case .signedOut:
+                self.isAuthenticated = false
+                self.currentUserProfile = nil
+                self.anonymousUserID = nil
+            default:
+                break
+            }
+        }
     }
 
     // MARK: - Authentication
 
     /// Create anonymous user session
     func createAnonymousSession() async throws -> String {
-        // Check if we already have an anonymous user ID
-        if let existingID = UserDefaults.standard.string(forKey: Constants.UserDefaultsKey.localUserID) {
-            self.anonymousUserID = existingID
+        Logger.info("Creating anonymous session", category: .auth)
+
+        // Check if we already have a valid session
+        if let session = try? await supabase.auth.session {
+            Logger.info("Found existing session for user: \(session.user.id)", category: .auth)
+            let userId = session.user.id.uuidString
+            self.anonymousUserID = userId
             self.isAuthenticated = true
-            return existingID
+
+            // Try to load existing profile
+            try? await loadUserProfile(userId: userId)
+            return userId
         }
 
-        // TODO: Integrate with Supabase Auth to create anonymous session
-        // For now, create a local UUID
-        let userID = UUID().uuidString
-        UserDefaults.standard.set(userID, forKey: Constants.UserDefaultsKey.localUserID)
-        UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.isAnonymousUser)
+        // Create new anonymous session
+        do {
+            let session = try await supabase.auth.signInAnonymously()
+            let userId = session.user.id.uuidString
 
-        self.anonymousUserID = userID
-        self.isAuthenticated = true
+            Logger.info("Anonymous session created: \(userId)", category: .auth)
 
-        // Create local user profile
-        let profile = UserProfile(
-            id: userID,
-            roleType: .explorer,
-            subscriptionTier: .free,
-            editsThisMonth: 0,
-            editsMonthStart: Date(),
-            createdAt: Date()
-        )
+            self.anonymousUserID = userId
+            self.isAuthenticated = true
 
-        self.currentUserProfile = profile
-        saveUserProfile(profile)
+            // Cache locally
+            UserDefaults.standard.set(userId, forKey: Constants.UserDefaultsKey.localUserID)
+            UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.isAnonymousUser)
 
-        return userID
+            // Create user profile in database with default values
+            let profile = UserProfile(
+                id: userId,
+                roleType: .explorer,
+                subscriptionTier: .free,
+                editsThisMonth: 0,
+                editsMonthStart: Date(),
+                createdAt: Date()
+            )
+
+            try await createUserProfile(profile)
+
+            self.currentUserProfile = profile
+            saveUserProfile(profile)
+
+            return userId
+        } catch {
+            Logger.error("Failed to create anonymous session: \(error.localizedDescription)", category: .auth)
+            throw SupabaseError.authenticationFailed(error.localizedDescription)
+        }
     }
 
     /// Sign in with Apple (placeholder)
@@ -73,23 +135,112 @@ class SupabaseService: ObservableObject {
 
     /// Sign out
     func signOut() async throws {
-        // TODO: Call Supabase Auth signOut
-        authToken = nil
-        isAuthenticated = false
-        currentUserProfile = nil
+        Logger.info("Signing out user", category: .auth)
 
-        // Clear local data
-        UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKey.localUserID)
-        UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKey.isAnonymousUser)
+        do {
+            try await supabase.auth.signOut()
+
+            authToken = nil
+            isAuthenticated = false
+            currentUserProfile = nil
+
+            // Clear local data
+            UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKey.localUserID)
+            UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKey.isAnonymousUser)
+            UserDefaults.standard.removeObject(forKey: "userProfile")
+
+            Logger.info("User signed out successfully", category: .auth)
+        } catch {
+            Logger.error("Failed to sign out: \(error.localizedDescription)", category: .auth)
+            throw SupabaseError.authenticationFailed(error.localizedDescription)
+        }
     }
 
     // MARK: - User Profile
+
+    /// Create user profile in database
+    private func createUserProfile(_ profile: UserProfile) async throws {
+        Logger.info("Creating user profile in database: \(profile.id)", category: .database)
+
+        struct UserProfileRow: Encodable {
+            let id: String
+            let role_type: String
+            let subscription_tier: String
+            let edits_this_month: Int
+            let edits_month_start: String
+        }
+
+        let dateFormatter = ISO8601DateFormatter()
+        let row = UserProfileRow(
+            id: profile.id,
+            role_type: profile.roleType.rawValue,
+            subscription_tier: profile.subscriptionTier.rawValue,
+            edits_this_month: profile.editsThisMonth,
+            edits_month_start: dateFormatter.string(from: profile.editsMonthStart)
+        )
+
+        do {
+            try await supabase.database
+                .from("user_profiles")
+                .insert(row)
+                .execute()
+
+            Logger.info("User profile created successfully", category: .database)
+        } catch {
+            Logger.error("Failed to create user profile: \(error.localizedDescription)", category: .database)
+            throw SupabaseError.databaseError(error.localizedDescription)
+        }
+    }
+
+    /// Load user profile from database
+    private func loadUserProfile(userId: String) async throws {
+        Logger.info("Loading user profile from database: \(userId)", category: .database)
+
+        struct UserProfileRow: Decodable {
+            let id: String
+            let role_type: String
+            let subscription_tier: String
+            let edits_this_month: Int
+            let edits_month_start: String
+            let created_at: String
+        }
+
+        do {
+            let response: UserProfileRow = try await supabase.database
+                .from("user_profiles")
+                .select()
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+
+            let dateFormatter = ISO8601DateFormatter()
+            let profile = UserProfile(
+                id: response.id,
+                roleType: RoleType(rawValue: response.role_type) ?? .explorer,
+                subscriptionTier: SubscriptionTier(rawValue: response.subscription_tier) ?? .free,
+                editsThisMonth: response.edits_this_month,
+                editsMonthStart: dateFormatter.date(from: response.edits_month_start) ?? Date(),
+                createdAt: dateFormatter.date(from: response.created_at) ?? Date()
+            )
+
+            self.currentUserProfile = profile
+            saveUserProfile(profile)
+
+            Logger.info("User profile loaded successfully", category: .database)
+        } catch {
+            Logger.error("Failed to load user profile: \(error.localizedDescription)", category: .database)
+            throw SupabaseError.databaseError(error.localizedDescription)
+        }
+    }
 
     /// Update user profile
     func updateUserProfile(roleType: RoleType? = nil, subscriptionTier: SubscriptionTier? = nil) async throws {
         guard var profile = currentUserProfile else {
             throw SupabaseError.notAuthenticated
         }
+
+        Logger.info("Updating user profile: \(profile.id)", category: .database)
 
         if let roleType = roleType {
             profile.roleType = roleType
@@ -99,31 +250,57 @@ class SupabaseService: ObservableObject {
             profile.subscriptionTier = subscriptionTier
         }
 
-        // TODO: Update profile in Supabase database
-        // For now, just update locally
-        currentUserProfile = profile
-        saveUserProfile(profile)
+        // Update in database
+        struct UpdateData: Encodable {
+            let role_type: String?
+            let subscription_tier: String?
+        }
 
-        NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: profile)
+        let updateData = UpdateData(
+            role_type: roleType?.rawValue,
+            subscription_tier: subscriptionTier?.rawValue
+        )
+
+        do {
+            try await supabase.database
+                .from("user_profiles")
+                .update(updateData)
+                .eq("id", value: profile.id)
+                .execute()
+
+            Logger.info("User profile updated successfully", category: .database)
+
+            // Update local cache
+            currentUserProfile = profile
+            saveUserProfile(profile)
+
+            NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: profile)
+        } catch {
+            Logger.error("Failed to update user profile: \(error.localizedDescription)", category: .database)
+            throw SupabaseError.databaseError(error.localizedDescription)
+        }
     }
 
     /// Increment edit count for current month
     func incrementEditCount() async throws {
-        guard var profile = currentUserProfile else {
+        guard let profile = currentUserProfile else {
             throw SupabaseError.notAuthenticated
         }
 
-        // Check if monthly reset is needed
-        if profile.needsMonthlyReset {
-            profile.editsThisMonth = 0
-            profile.editsMonthStart = Date()
+        Logger.info("Incrementing edit count for user: \(profile.id)", category: .database)
+
+        do {
+            // Call the Supabase function that handles monthly reset logic
+            try await supabase.database.rpc("increment_edit_count", params: ["user_uuid": profile.id]).execute()
+
+            // Reload profile to get updated count
+            try await loadUserProfile(userId: profile.id)
+
+            Logger.info("Edit count incremented successfully", category: .database)
+        } catch {
+            Logger.error("Failed to increment edit count: \(error.localizedDescription)", category: .database)
+            throw SupabaseError.databaseError(error.localizedDescription)
         }
-
-        profile.editsThisMonth += 1
-
-        // TODO: Update in Supabase database
-        currentUserProfile = profile
-        saveUserProfile(profile)
     }
 
     /// Check if user has edits remaining
@@ -183,14 +360,81 @@ class SupabaseService: ObservableObject {
 
     /// Fetch templates for user's role
     func fetchTemplates(for roleType: RoleType) async throws -> [Template] {
-        // TODO: Fetch from Supabase database
-        // For now, return sample templates filtered by role
-        return Template.samples.filter { $0.isAvailableFor(role: roleType) }
+        Logger.info("Fetching templates for role: \(roleType.rawValue)", category: .database)
+
+        struct TemplateRow: Decodable {
+            let id: String
+            let name: String
+            let description: String?
+            let prompt_text: String
+            let role_tags: [String]
+            let category: String
+            let preview_url: String?
+            let usage_count: Int
+        }
+
+        do {
+            let response: [TemplateRow] = try await supabase.database
+                .from("templates")
+                .select()
+                .eq("is_active", value: true)
+                .execute()
+                .value
+
+            let templates = response.compactMap { row -> Template? in
+                guard let category = TemplateCategory(rawValue: row.category) else {
+                    return nil
+                }
+
+                let roleTags = row.role_tags.compactMap { RoleType(rawValue: $0) }
+
+                return Template(
+                    id: row.id,
+                    name: row.name,
+                    description: row.description ?? "",
+                    promptText: row.prompt_text,
+                    roleTags: roleTags,
+                    category: category,
+                    previewUrl: row.preview_url,
+                    usageCount: row.usage_count,
+                    isActive: true
+                )
+            }
+
+            // Filter by role
+            let filteredTemplates = templates.filter { $0.isAvailableFor(role: roleType) }
+
+            Logger.info("Fetched \(filteredTemplates.count) templates", category: .database)
+            return filteredTemplates
+        } catch {
+            Logger.error("Failed to fetch templates: \(error.localizedDescription)", category: .database)
+            // Fallback to local templates
+            Logger.info("Falling back to local templates", category: .database)
+            return Template.samples.filter { $0.isAvailableFor(role: roleType) }
+        }
     }
 
     /// Increment template usage count
     func incrementTemplateUsage(templateId: String) async throws {
-        // TODO: Update usage_count in Supabase database
+        Logger.info("Incrementing usage count for template: \(templateId)", category: .database)
+
+        do {
+            struct UpdateData: Encodable {
+                let usage_count: Int
+            }
+
+            // Increment usage_count in database
+            try await supabase.database
+                .from("templates")
+                .update(["usage_count": "usage_count + 1"])
+                .eq("id", value: templateId)
+                .execute()
+
+            Logger.info("Template usage count incremented", category: .database)
+        } catch {
+            Logger.error("Failed to increment template usage: \(error.localizedDescription)", category: .database)
+            // Non-critical error, don't throw
+        }
     }
 
     // MARK: - Brand Kits
@@ -257,6 +501,8 @@ class SupabaseService: ObservableObject {
 // MARK: - Error Types
 enum SupabaseError: LocalizedError {
     case notAuthenticated
+    case authenticationFailed(String)
+    case databaseError(String)
     case quotaExceeded
     case imageProcessingFailed
     case brandKitLimitReached
@@ -266,6 +512,10 @@ enum SupabaseError: LocalizedError {
         switch self {
         case .notAuthenticated:
             return "You must be signed in to perform this action."
+        case .authenticationFailed(let message):
+            return "Authentication failed: \(message)"
+        case .databaseError(let message):
+            return "Database error: \(message)"
         case .quotaExceeded:
             return "You've used all your free edits this month. Upgrade to Pro for unlimited edits."
         case .imageProcessingFailed:
