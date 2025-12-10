@@ -42,7 +42,7 @@ class OnboardingViewModel: ObservableObject {
     func nextStep() {
         if currentStep < totalSteps - 1 {
             currentStep += 1
-            Logger.info("Onboarding: Advanced to step \(currentStep)", category: .app)
+            Logger.info("Onboarding: Advanced to step \(currentStep)", category: Logger.ui)
         } else {
             completeOnboarding()
         }
@@ -52,14 +52,14 @@ class OnboardingViewModel: ObservableObject {
     func previousStep() {
         if currentStep > 0 {
             currentStep -= 1
-            Logger.info("Onboarding: Went back to step \(currentStep)", category: .app)
+            Logger.info("Onboarding: Went back to step \(currentStep)", category: Logger.ui)
         }
     }
 
     /// Skip to end
     func skipOnboarding() {
         currentStep = totalSteps - 1
-        Logger.info("Onboarding: Skipped to final step", category: .app)
+        Logger.info("Onboarding: Skipped to final step", category: Logger.ui)
     }
 
     // MARK: - Role Selection
@@ -67,7 +67,7 @@ class OnboardingViewModel: ObservableObject {
     /// Select a user role
     func selectRole(_ role: RoleType) {
         selectedRole = role
-        Logger.info("Onboarding: Selected role \(role.rawValue)", category: .app)
+        Logger.info("Onboarding: Selected role \(role.rawValue)", category: Logger.ui)
     }
 
     // MARK: - Completion
@@ -88,18 +88,18 @@ class OnboardingViewModel: ObservableObject {
         isCreatingSession = true
         errorMessage = nil
 
-        Logger.info("Creating anonymous user session", category: .auth)
+        Logger.info("Creating anonymous user session", category: Logger.auth)
 
         do {
             // Create anonymous session
             let userId = try await supabaseService.createAnonymousSession()
 
-            Logger.info("Anonymous session created: \(userId)", category: .auth)
+            Logger.info("Anonymous session created: \(userId)", category: Logger.auth)
 
             // Update user profile with selected role
             try await supabaseService.updateUserProfile(roleType: role)
 
-            Logger.info("User profile updated with role: \(role.rawValue)", category: .auth)
+            Logger.info("User profile updated with role: \(role.rawValue)", category: Logger.auth)
 
             // Mark onboarding as complete
             UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.hasCompletedOnboarding)
@@ -107,10 +107,10 @@ class OnboardingViewModel: ObservableObject {
 
             isComplete = true
 
-            Logger.info("Onboarding completed successfully", category: .app)
+            Logger.info("Onboarding completed successfully", category: Logger.ui)
 
         } catch {
-            Logger.error("Failed to complete onboarding: \(error.localizedDescription)", category: .auth)
+            Logger.error("Failed to complete onboarding: \(error.localizedDescription)", category: Logger.auth)
             errorMessage = "Failed to create account: \(error.localizedDescription)"
         }
 
@@ -121,11 +121,11 @@ class OnboardingViewModel: ObservableObject {
 
     /// Request necessary permissions (speech, photos, etc.)
     func requestPermissions() async {
-        Logger.info("Requesting app permissions", category: .app)
+        Logger.info("Requesting app permissions", category: Logger.ui)
 
         // Speech recognition permission will be requested on first use
         // Photo library permission will be requested when user selects a photo
         // For now, just log that we're ready
-        Logger.info("Permissions will be requested on first use", category: .app)
+        Logger.info("Permissions will be requested on first use", category: Logger.ui)
     }
 }
