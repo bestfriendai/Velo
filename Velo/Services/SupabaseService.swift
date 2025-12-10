@@ -77,28 +77,18 @@ class SupabaseService: ObservableObject {
 
     /// Create anonymous user session
     func createAnonymousSession() async throws -> String {
-        Logger.info("Creating anonymous session", category: Logger.auth)
+        Logger.info("🎬 STARTING createAnonymousSession()", category: Logger.auth)
 
-        // Check if we already have a valid session
-        if let session = try? await supabase.auth.session {
-            Logger.info("Found existing session for user: \(session.user.id)", category: Logger.auth)
-            let userId = session.user.id.uuidString
-            self.anonymousUserID = userId
-            self.isAuthenticated = true
+        // Don't check for existing session - always create fresh to avoid issues
+        Logger.info("🔄 Calling supabase.auth.signInAnonymously()...", category: Logger.auth)
 
-            // Try to load existing profile
-            try? await loadUserProfile(userId: userId)
-            return userId
-        }
-
-        // Create new anonymous session
         do {
-            Logger.info("🔄 Attempting to sign in anonymously...", category: Logger.auth)
             let session = try await supabase.auth.signInAnonymously()
             let userId = session.user.id.uuidString
 
-            Logger.info("✅ Anonymous session created successfully! User ID: \(userId)", category: Logger.auth)
+            Logger.info("✅ SIGN IN SUCCESS! User ID: \(userId)", category: Logger.auth)
             Logger.info("✅ User is anonymous: \(session.user.isAnonymous)", category: Logger.auth)
+            Logger.info("✅ Access token exists: \(session.accessToken.prefix(20))...", category: Logger.auth)
 
             self.anonymousUserID = userId
             self.isAuthenticated = true
@@ -107,15 +97,19 @@ class SupabaseService: ObservableObject {
             UserDefaults.standard.set(userId, forKey: Constants.UserDefaultsKey.localUserID)
             UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.isAnonymousUser)
 
-            // DON'T create profile yet - wait for user to select role
-            // This avoids doing INSERT followed by UPDATE (two database ops)
-            // Instead, we'll do a single INSERT with the correct role in updateUserProfile
-
-            Logger.info("✅ Session created. Waiting for user to select role before creating profile.", category: Logger.auth)
+            Logger.info("✅ Session created and stored. Ready for profile creation.", category: Logger.auth)
 
             return userId
-        } catch {
-            Logger.error("Failed to create anonymous session: \(error.localizedDescription)", category: Logger.auth)
+        } catch let error as NSError {
+            Logger.error("❌ SIGN IN FAILED!", category: Logger.auth)
+            Logger.error("❌ Error domain: \(error.domain)", category: Logger.auth)
+            Logger.error("❌ Error code: \(error.code)", category: Logger.auth)
+            Logger.error("❌ Error: \(error.localizedDescription)", category: Logger.auth)
+            Logger.error("❌ Full error: \(error)", category: Logger.auth)
+
+            // If anonymous auth is disabled in Supabase, we'll get an error here
+            Logger.error("❌ POSSIBLE CAUSE: Anonymous sign-ins NOT enabled in Supabase settings!", category: Logger.auth)
+
             throw SupabaseError.authenticationFailed(error.localizedDescription)
         }
     }
