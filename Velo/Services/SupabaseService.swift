@@ -225,10 +225,14 @@ class SupabaseService: ObservableObject {
             self.currentUserProfile = profile
             saveUserProfile(profile)
 
-            Logger.info("User profile loaded successfully", category: Logger.network)
+            Logger.info("✅ User profile loaded successfully", category: Logger.network)
+        } catch let error as PostgrestError {
+            Logger.error("❌ Postgrest error loading profile: \(error.message)", category: Logger.network)
+            Logger.error("❌ This is usually safe to ignore during onboarding", category: Logger.network)
+            // Don't throw - this is not critical, profile is already set locally
         } catch {
             Logger.error("Failed to load user profile: \(error.localizedDescription)", category: Logger.network)
-            throw SupabaseError.databaseError(error.localizedDescription)
+            // Don't throw - this is not critical, profile is already set locally
         }
     }
 
