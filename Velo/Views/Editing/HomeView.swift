@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    let userRole: UserRole
+    let userRole: OldUserRole
     @State private var showEditingInterface = false
     @State private var selectedTab = 0
     @State private var messageText = ""

@@ -286,17 +286,6 @@ struct RoleCard: View {
     }
 }
 
-// MARK: - Old UserRole for backward compatibility with existing HomeView
-// TODO: Remove once HomeView is refactored
-struct OldUserRole: Identifiable {
-    let id: String
-    let icon: String
-    let title: String
-    let description: String
-    let features: [String]
-    let gradient: [Color]
-}
-
 #Preview {
     RoleSelectionView()
 }
