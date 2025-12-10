@@ -3,17 +3,18 @@
 //  Velo
 //
 //  Created by Ky Vu on 12/9/25.
+//  Refactored with ViewModel on 12/10/25
 //
 
 import SwiftUI
 
 struct EditingInterfaceView: View {
-    @State private var messageText = ""
-    @State private var isRecording = false
-    @State private var showBeforeAfter = false
-    @State private var messages: [ChatMessage] = [
-        ChatMessage(text: "Hi! I'm ready to edit your photo. Just tell me what you'd like to change.", isUser: false)
-    ]
+    @StateObject private var viewModel: EditingViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    init(image: UIImage? = nil) {
+        _viewModel = StateObject(wrappedValue: EditingViewModel(image: image))
+    }
 
     var body: some View {
         ZStack {
@@ -41,7 +42,25 @@ struct EditingInterfaceView: View {
                     Spacer()
                     voiceButton
                         .padding(.trailing, 20)
-                        .padding(.bottom, 180)
+                        .padding(.bottom: 180)
+                }
+            }
+
+            // Error Alert
+            if let error = viewModel.errorMessage {
+                VStack {
+                    Spacer()
+                    Text(error)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(12)
+                        .padding()
+                        .transition(.move(edge: .bottom))
+                        .onTapGesture {
+                            viewModel.errorMessage = nil
+                        }
                 }
             }
         }
@@ -50,7 +69,7 @@ struct EditingInterfaceView: View {
     // MARK: - Top Bar
     private var topBar: some View {
         HStack {
-            Button(action: {}) {
+            Button(action: { dismiss() }) {
                 Image(systemName: "xmark")
                     .font(.title3)
                     .foregroundColor(.white)
@@ -58,10 +77,10 @@ struct EditingInterfaceView: View {
 
             Spacer()
 
-            Button(action: { showBeforeAfter.toggle() }) {
+            Button(action: { viewModel.showBeforeAfter.toggle() }) {
                 HStack(spacing: 4) {
-                    Image(systemName: showBeforeAfter ? "eye.fill" : "eye")
-                    Text(showBeforeAfter ? "After" : "Before")
+                    Image(systemName: viewModel.showBeforeAfter ? "eye.fill" : "eye")
+                    Text(viewModel.showBeforeAfter ? "After" : "Before")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
@@ -71,11 +90,28 @@ struct EditingInterfaceView: View {
                 .background(Color.white.opacity(0.2))
                 .cornerRadius(20)
             }
+            .disabled(viewModel.editedImage == nil)
+            .opacity(viewModel.editedImage == nil ? 0.5 : 1.0)
 
             Spacer()
 
-            Button(action: {}) {
-                Image(systemName: "square.and.arrow.up")
+            Menu {
+                Button(action: { viewModel.saveEditedImage() }) {
+                    Label("Save to Library", systemImage: "square.and.arrow.down")
+                }
+                .disabled(viewModel.editedImage == nil)
+
+                Button(action: { viewModel.resetToOriginal() }) {
+                    Label("Reset to Original", systemImage: "arrow.counterclockwise")
+                }
+                .disabled(viewModel.editedImage == nil)
+
+                Button(action: {}) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .disabled(viewModel.editedImage == nil)
+            } label: {
+                Image(systemName: "ellipsis.circle")
                     .font(.title3)
                     .foregroundColor(.white)
             }
@@ -87,27 +123,35 @@ struct EditingInterfaceView: View {
     // MARK: - Photo Preview
     private var photoPreviewArea: some View {
         ZStack {
-            // Placeholder photo
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+            // Display image or placeholder
+            if let image = viewModel.showBeforeAfter ? viewModel.currentImage : (viewModel.editedImage ?? viewModel.currentImage) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .transition(.opacity)
+            } else {
+                // Placeholder
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
 
-            VStack {
-                Image(systemName: "photo")
-                    .font(.system(size: 60))
-                    .foregroundColor(.white.opacity(0.5))
-                Text("Your Photo Here")
-                    .font(.headline)
-                    .foregroundColor(.white.opacity(0.7))
+                VStack {
+                    Image(systemName: "photo")
+                        .font(.system(size: 60))
+                        .foregroundColor(.white.opacity(0.5))
+                    Text("Your Photo Here")
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.7))
+                }
             }
 
             // Processing overlay
-            if isRecording {
+            if viewModel.isProcessing {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
 
@@ -128,10 +172,15 @@ struct EditingInterfaceView: View {
     private var suggestionCards: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                SuggestionCard(icon: "eye", text: "Open closed eyes", color: .blue)
-                SuggestionCard(icon: "sun.max", text: "Brighten image", color: .orange)
-                SuggestionCard(icon: "sparkles", text: "Enhance colors", color: .purple)
-                SuggestionCard(icon: "crop", text: "Remove background", color: .green)
+                ForEach(viewModel.suggestions) { suggestion in
+                    SuggestionCard(
+                        icon: suggestion.icon,
+                        text: suggestion.text,
+                        color: suggestion.color
+                    ) {
+                        viewModel.applySuggestion(suggestion)
+                    }
+                }
             }
             .padding(.horizontal)
         }
@@ -143,13 +192,23 @@ struct EditingInterfaceView: View {
     private var chatInterface: some View {
         VStack(spacing: 0) {
             // Messages
-            ScrollView {
-                VStack(spacing: 12) {
-                    ForEach(messages) { message in
-                        ChatBubble(message: message)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(viewModel.messages) { message in
+                            ChatBubble(message: message)
+                                .id(message.id)
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: viewModel.messages.count) { _ in
+                    if let lastMessage = viewModel.messages.last {
+                        withAnimation {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
                     }
                 }
-                .padding()
             }
             .frame(height: 200)
             .background(Color(white: 0.05))
@@ -159,20 +218,30 @@ struct EditingInterfaceView: View {
 
             // Input Bar
             HStack(spacing: 12) {
-                TextField("Type what you want to change...", text: $messageText)
+                TextField("Type what you want to change...", text: $viewModel.messageText)
                     .textFieldStyle(.plain)
                     .padding(12)
                     .background(Color.white.opacity(0.1))
                     .cornerRadius(24)
                     .foregroundColor(.white)
+                    .disabled(viewModel.isProcessing || viewModel.isRecording)
+                    .onSubmit {
+                        Task {
+                            await viewModel.sendMessage()
+                        }
+                    }
 
-                Button(action: sendMessage) {
+                Button(action: {
+                    Task {
+                        await viewModel.sendMessage()
+                    }
+                }) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
                         .foregroundColor(.blue)
                 }
-                .disabled(messageText.isEmpty)
-                .opacity(messageText.isEmpty ? 0.5 : 1.0)
+                .disabled(viewModel.messageText.isEmpty || viewModel.isProcessing)
+                .opacity(viewModel.messageText.isEmpty || viewModel.isProcessing ? 0.5 : 1.0)
             }
             .padding()
             .background(Color(white: 0.05))
@@ -181,7 +250,7 @@ struct EditingInterfaceView: View {
 
     // MARK: - Voice Button
     private var voiceButton: some View {
-        Button(action: { isRecording.toggle() }) {
+        Button(action: { viewModel.toggleVoiceRecording() }) {
             ZStack {
                 Circle()
                     .fill(
@@ -194,32 +263,21 @@ struct EditingInterfaceView: View {
                     .frame(width: 70, height: 70)
                     .shadow(color: .blue.opacity(0.5), radius: 20, x: 0, y: 10)
 
-                if isRecording {
+                if viewModel.isRecording {
                     Circle()
                         .stroke(Color.white.opacity(0.3), lineWidth: 2)
                         .frame(width: 90, height: 90)
-                        .scaleEffect(isRecording ? 1.2 : 1.0)
-                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isRecording)
+                        .scaleEffect(viewModel.isRecording ? 1.2 : 1.0)
+                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: viewModel.isRecording)
                 }
 
-                Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                Image(systemName: viewModel.isRecording ? "stop.fill" : "mic.fill")
                     .font(.system(size: 28))
                     .foregroundColor(.white)
             }
         }
-    }
-
-    // MARK: - Helper Functions
-    private func sendMessage() {
-        guard !messageText.isEmpty else { return }
-        messages.append(ChatMessage(text: messageText, isUser: true))
-        let userMessage = messageText
-        messageText = ""
-
-        // Simulate AI response
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            messages.append(ChatMessage(text: "Got it! I'll \(userMessage.lowercased()) for you.", isUser: false))
-        }
+        .disabled(viewModel.isProcessing)
+        .opacity(viewModel.isProcessing ? 0.5 : 1.0)
     }
 }
 
@@ -228,9 +286,10 @@ struct SuggestionCard: View {
     let icon: String
     let text: String
     let color: Color
+    let action: () -> Void
 
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 16))
@@ -268,12 +327,6 @@ struct ChatBubble: View {
             if !message.isUser { Spacer() }
         }
     }
-}
-
-struct ChatMessage: Identifiable {
-    let id = UUID()
-    let text: String
-    let isUser: Bool
 }
 
 #Preview {
