@@ -12,31 +12,29 @@
 6. Make sure **"Velo" target is checked**
 7. Click **"Add"**
 
-### Step 2: Set Configuration File in Project Settings
+### Step 2: Set Configuration File in Build Settings (Easier Alternative)
 
-1. In Xcode, click on the **Velo project** (blue icon at top of Project Navigator)
-2. Select the **Velo project** (not the target) in the main area
-3. Click the **"Info"** tab
-4. Under **"Configurations"**, you'll see:
-   - Debug
-   - Release
-5. For **Debug**:
-   - Click the disclosure triangle to expand
-   - Under "Velo" (the target), select **"Config"** from the dropdown
-6. For **Release**:
-   - Do the same - select **"Config"** under the Velo target
+**Actually, you can skip this step!** Instead, let's add the environment variables directly to the scheme, which is simpler.
 
-### Step 3: Verify Environment Variables Are Available
+Go to **Step 3** below for the easiest solution.
 
-1. Select the **Velo scheme** (top toolbar, next to device selector)
-2. Click **Edit Scheme...**
-3. Select **"Run"** on the left
-4. Click the **"Arguments"** tab
-5. Under **"Environment Variables"**, you should see:
-   - `SUPABASE_URL` = `https://ycuxojvbqodicewurpxp.supabase.co`
-   - `SUPABASE_ANON_KEY` = (your key)
+### Step 3: Add Environment Variables to Xcode Scheme (Recommended)
 
-**Note:** These are automatically loaded from Config.xcconfig, so you don't need to add them manually here.
+The easiest approach is to add the environment variables directly:
+
+1. Select the **Velo scheme** (top toolbar, next to the device selector - it says "Velo > iPhone 15")
+2. Click **"Edit Scheme..."** (or press ⌘+<)
+3. Select **"Run"** on the left sidebar
+4. Click the **"Arguments"** tab at the top
+5. Under **"Environment Variables"** section, click the **+** button twice to add:
+
+| Name | Value |
+|------|-------|
+| `SUPABASE_URL` | `https://ycuxojvbqodicewurpxp.supabase.co` |
+| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdXhvanZicW9kaWNld3VycHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM4MDkwMTUsImV4cCI6MjA0OTM4NTAxNX0.BK_ZbLjdHEIJRKtVLKdpPXXkqr7s_YJLCq4MxgZrcN8` |
+
+6. **Make sure both checkboxes are checked** (enabled)
+7. Click **"Close"**
 
 ### Step 4: Clean Build and Run
 
