@@ -96,6 +96,7 @@ iOSInjectionProject/
 *.env
 secrets.json
 config/secrets.swift
+CREDENTIALS.md
 
 # Documentation builds
 docs/build/
