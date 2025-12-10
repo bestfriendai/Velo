@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import UIKit
 import Combine
+import Speech
 
 /// ViewModel for the editing interface with voice integration
 @MainActor
