@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct VeloApp: App {
+    // P0-3: App coordinator manages state and dependencies
+    @StateObject private var coordinator = AppCoordinator()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environmentObject(coordinator)
         }
     }
 }

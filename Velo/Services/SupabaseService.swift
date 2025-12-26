@@ -19,25 +19,30 @@ class SupabaseService: ObservableObject {
     // MARK: - Published Properties
     @Published var isAuthenticated = false
     @Published var currentUserProfile: UserProfile?
+    @Published var configurationError: Bool = false  // P0-2 Fix: Track configuration state
 
     // MARK: - Private Properties
-    private let supabase: SupabaseClient
+    private var supabase: SupabaseClient?  // P0-2 Fix: Made optional for graceful handling
     private var authToken: String?
     private var anonymousUserID: String?
 
     // MARK: - Initialization
     private init() {
-        // Initialize Supabase client
-        guard let url = URL(string: Constants.API.supabaseURL),
+        // P0-2 Fix: Handle missing credentials gracefully instead of fatalError
+        guard Secrets.isConfigured,
+              let url = URL(string: Constants.API.supabaseURL),
               !Constants.API.supabaseAnonKey.isEmpty else {
-            Logger.error("Supabase credentials not configured", category: Logger.network)
-            fatalError("Supabase credentials missing. Check environment variables.")
+            Logger.fault("Supabase credentials not configured", category: Logger.network)
+            self.configurationError = true
+            self.supabase = nil
+            return
         }
 
         self.supabase = SupabaseClient(
             supabaseURL: url,
             supabaseKey: Constants.API.supabaseAnonKey
         )
+        self.configurationError = false
 
         Logger.info("Supabase client initialized", category: Logger.network)
 
@@ -50,10 +55,22 @@ class SupabaseService: ObservableObject {
         }
     }
 
+    // MARK: - Configuration Check
+
+    /// Ensure Supabase client is available before operations
+    private func requireClient() throws -> SupabaseClient {
+        guard let client = supabase else {
+            throw SupabaseError.configurationError(Secrets.configurationError ?? "Supabase not configured")
+        }
+        return client
+    }
+
     // MARK: - Auth State Listener
 
     private func setupAuthStateListener() async {
-        for await state in await supabase.auth.authStateChanges {
+        guard let client = supabase else { return }
+
+        for await state in await client.auth.authStateChanges {
             Logger.debug("Auth state changed: \(state.event)", category: Logger.auth)
 
             switch state.event {
@@ -77,18 +94,18 @@ class SupabaseService: ObservableObject {
 
     /// Create anonymous user session
     func createAnonymousSession() async throws -> String {
-        Logger.info("🎬 STARTING createAnonymousSession()", category: Logger.auth)
+        let client = try requireClient()  // P0-2 Fix: Check configuration
 
-        // Don't check for existing session - always create fresh to avoid issues
-        Logger.info("🔄 Calling supabase.auth.signInAnonymously()...", category: Logger.auth)
+        Logger.info("Starting createAnonymousSession()", category: Logger.auth)
 
         do {
-            let session = try await supabase.auth.signInAnonymously()
+            let session = try await client.auth.signInAnonymously()
             let userId = session.user.id.uuidString
 
-            Logger.info("✅ SIGN IN SUCCESS! User ID: \(userId)", category: Logger.auth)
-            Logger.info("✅ User is anonymous: \(session.user.isAnonymous)", category: Logger.auth)
-            Logger.info("✅ Access token exists: \(session.accessToken.prefix(20))...", category: Logger.auth)
+            Logger.info("Sign in success - User ID: \(userId)", category: Logger.auth)
+            Logger.info("User is anonymous: \(session.user.isAnonymous)", category: Logger.auth)
+            // SEC-3 Fix: Never log tokens, even partially
+            Logger.info("Access token exists: \(!session.accessToken.isEmpty)", category: Logger.auth)
 
             self.anonymousUserID = userId
             self.isAuthenticated = true
@@ -97,18 +114,15 @@ class SupabaseService: ObservableObject {
             UserDefaults.standard.set(userId, forKey: Constants.UserDefaultsKey.localUserID)
             UserDefaults.standard.set(true, forKey: Constants.UserDefaultsKey.isAnonymousUser)
 
-            Logger.info("✅ Session created and stored. Ready for profile creation.", category: Logger.auth)
+            Logger.info("Session created and stored. Ready for profile creation.", category: Logger.auth)
 
             return userId
         } catch let error as NSError {
-            Logger.error("❌ SIGN IN FAILED!", category: Logger.auth)
-            Logger.error("❌ Error domain: \(error.domain)", category: Logger.auth)
-            Logger.error("❌ Error code: \(error.code)", category: Logger.auth)
-            Logger.error("❌ Error: \(error.localizedDescription)", category: Logger.auth)
-            Logger.error("❌ Full error: \(error)", category: Logger.auth)
+            Logger.error("Sign in failed - Error code: \(error.code)", category: Logger.auth)
+            Logger.error("Sign in failed - \(error.localizedDescription)", category: Logger.auth)
 
             // If anonymous auth is disabled in Supabase, we'll get an error here
-            Logger.error("❌ POSSIBLE CAUSE: Anonymous sign-ins NOT enabled in Supabase settings!", category: Logger.auth)
+            Logger.error("Possible cause: Anonymous sign-ins NOT enabled in Supabase settings", category: Logger.auth)
 
             throw SupabaseError.authenticationFailed(error.localizedDescription)
         }
@@ -122,10 +136,11 @@ class SupabaseService: ObservableObject {
 
     /// Sign out
     func signOut() async throws {
+        let client = try requireClient()
         Logger.info("Signing out user", category: Logger.auth)
 
         do {
-            try await supabase.auth.signOut()
+            try await client.auth.signOut()
 
             authToken = nil
             isAuthenticated = false
@@ -147,6 +162,7 @@ class SupabaseService: ObservableObject {
 
     /// Create user profile in database
     private func createUserProfile(_ profile: UserProfile) async throws {
+        let client = try requireClient()
         Logger.info("Creating user profile in database: \(profile.id)", category: Logger.network)
 
         struct UserProfileRow: Encodable {
@@ -168,30 +184,30 @@ class SupabaseService: ObservableObject {
 
         do {
             // Verify we have an auth session before inserting
-            guard let session = try? await supabase.auth.session else {
-                Logger.error("❌ Cannot create profile: No auth session!", category: Logger.auth)
+            guard let session = try? await client.auth.session else {
+                Logger.error("Cannot create profile: No auth session", category: Logger.auth)
                 throw SupabaseError.notAuthenticated
             }
-            Logger.info("✅ Have auth session for INSERT: \(session.user.id)", category: Logger.auth)
+            Logger.info("Have auth session for INSERT: \(session.user.id)", category: Logger.auth)
 
-            try await supabase.database
+            try await client.database
                 .from("user_profiles")
                 .insert(row)
                 .execute()
 
-            Logger.info("✅ User profile created successfully", category: Logger.network)
+            Logger.info("User profile created successfully", category: Logger.network)
         } catch let error as PostgrestError {
-            Logger.error("❌ Postgrest error creating profile: \(error)", category: Logger.network)
-            Logger.error("❌ Error details: \(error.localizedDescription)", category: Logger.network)
+            Logger.error("Postgrest error creating profile: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         } catch {
-            Logger.error("❌ Failed to create user profile: \(error)", category: Logger.network)
+            Logger.error("Failed to create user profile: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
 
     /// Load user profile from database
     private func loadUserProfile(userId: String) async throws {
+        guard let client = supabase else { return }  // Silent return if not configured
         Logger.info("Loading user profile from database: \(userId)", category: Logger.network)
 
         struct UserProfileRow: Decodable {
@@ -204,7 +220,7 @@ class SupabaseService: ObservableObject {
         }
 
         do {
-            let response: UserProfileRow = try await supabase.database
+            let response: UserProfileRow = try await client.database
                 .from("user_profiles")
                 .select()
                 .eq("id", value: userId)
@@ -225,10 +241,10 @@ class SupabaseService: ObservableObject {
             self.currentUserProfile = profile
             saveUserProfile(profile)
 
-            Logger.info("✅ User profile loaded successfully", category: Logger.network)
+            Logger.info("User profile loaded successfully", category: Logger.network)
         } catch let error as PostgrestError {
-            Logger.error("❌ Postgrest error loading profile: \(error.message)", category: Logger.network)
-            Logger.error("❌ This is usually safe to ignore during onboarding", category: Logger.network)
+            Logger.error("Postgrest error loading profile: \(error.message)", category: Logger.network)
+            Logger.debug("This is usually safe to ignore during onboarding", category: Logger.network)
             // Don't throw - this is not critical, profile is already set locally
         } catch {
             Logger.error("Failed to load user profile: \(error.localizedDescription)", category: Logger.network)
@@ -238,20 +254,23 @@ class SupabaseService: ObservableObject {
 
     /// Update user profile (or create if doesn't exist)
     func updateUserProfile(roleType: RoleType? = nil, subscriptionTier: SubscriptionTier? = nil) async throws {
+        let client = try requireClient()
+
         // Verify auth session exists
-        guard let session = try? await supabase.auth.session else {
-            Logger.error("❌ NO AUTH SESSION! Cannot update profile.", category: Logger.auth)
+        guard let session = try? await client.auth.session else {
+            Logger.error("No auth session - cannot update profile", category: Logger.auth)
             throw SupabaseError.notAuthenticated
         }
 
-        Logger.info("✅ Auth session verified. User ID: \(session.user.id)", category: Logger.auth)
-        Logger.info("✅ Access token exists: \(session.accessToken.prefix(20))...", category: Logger.auth)
+        Logger.info("Auth session verified. User ID: \(session.user.id)", category: Logger.auth)
+        // SEC-3 Fix: Never log tokens
+        Logger.info("Access token exists: \(!session.accessToken.isEmpty)", category: Logger.auth)
 
         let userId = session.user.id.uuidString
 
         // If no profile exists locally, this is the first time - CREATE instead of UPDATE
         if currentUserProfile == nil {
-            Logger.info("📝 No existing profile. Creating new profile with selected role.", category: Logger.network)
+            Logger.info("No existing profile. Creating new profile with selected role.", category: Logger.network)
 
             let newProfile = UserProfile(
                 id: userId,
@@ -266,14 +285,17 @@ class SupabaseService: ObservableObject {
             self.currentUserProfile = newProfile
             saveUserProfile(newProfile)
 
-            Logger.info("✅ Profile created successfully with role: \(newProfile.roleType.rawValue)", category: Logger.network)
+            Logger.info("Profile created successfully with role: \(newProfile.roleType.rawValue)", category: Logger.network)
             NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: newProfile)
             return
         }
 
-        // Profile exists - UPDATE it
-        var profile = currentUserProfile!
-        Logger.info("📝 Updating existing profile: \(profile.id)", category: Logger.network)
+        // P1-4 Fix: Use guard instead of force unwrap
+        guard var profile = currentUserProfile else {
+            Logger.error("Attempted to update nil profile", category: Logger.network)
+            throw SupabaseError.notAuthenticated
+        }
+        Logger.info("Updating existing profile: \(profile.id)", category: Logger.network)
 
         if let roleType = roleType {
             profile.roleType = roleType
@@ -295,13 +317,13 @@ class SupabaseService: ObservableObject {
         )
 
         do {
-            try await supabase.database
+            try await client.database
                 .from("user_profiles")
                 .update(updateData)
                 .eq("id", value: profile.id)
                 .execute()
 
-            Logger.info("✅ Profile updated successfully", category: Logger.network)
+            Logger.info("Profile updated successfully", category: Logger.network)
 
             // Update local cache
             currentUserProfile = profile
@@ -309,17 +331,18 @@ class SupabaseService: ObservableObject {
 
             NotificationCenter.default.post(name: Constants.NotificationName.userProfileUpdated, object: profile)
         } catch let error as PostgrestError {
-            Logger.error("❌ Postgrest error: \(error.message)", category: Logger.network)
-            Logger.error("❌ Error code: \(error.code ?? "unknown")", category: Logger.network)
+            Logger.error("Postgrest error: \(error.message)", category: Logger.network)
             throw SupabaseError.databaseError("Database error: \(error.message)")
         } catch {
-            Logger.error("❌ Update failed: \(error)", category: Logger.network)
+            Logger.error("Update failed: \(error.localizedDescription)", category: Logger.network)
             throw SupabaseError.databaseError(error.localizedDescription)
         }
     }
 
     /// Increment edit count for current month
     func incrementEditCount() async throws {
+        let client = try requireClient()
+
         guard let profile = currentUserProfile else {
             throw SupabaseError.notAuthenticated
         }
@@ -328,7 +351,7 @@ class SupabaseService: ObservableObject {
 
         do {
             // Call the Supabase function that handles monthly reset logic
-            try await supabase.database.rpc("increment_edit_count", params: ["user_uuid": profile.id]).execute()
+            try await client.database.rpc("increment_edit_count", params: ["user_uuid": profile.id]).execute()
 
             // Reload profile to get updated count
             try await loadUserProfile(userId: profile.id)
@@ -353,6 +376,8 @@ class SupabaseService: ObservableObject {
 
     /// Process edit request via Supabase Edge Function
     func processEdit(command: String, image: UIImage) async throws -> EditResponse {
+        let client = try requireClient()
+
         guard let profile = currentUserProfile else {
             throw SupabaseError.notAuthenticated
         }
@@ -362,12 +387,13 @@ class SupabaseService: ObservableObject {
             throw SupabaseError.quotaExceeded
         }
 
-        // Compress image
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+        // PERF-1 Fix: Process image off main thread
+        let base64Image: String
+        do {
+            base64Image = try await image.base64EncodedJPEGAsync(compressionQuality: 0.8, maxDimension: 2048)
+        } catch {
             throw SupabaseError.imageProcessingFailed
         }
-
-        let base64Image = imageData.base64EncodedString()
 
         Logger.info("Calling process-edit edge function", category: Logger.network)
 
@@ -388,7 +414,7 @@ class SupabaseService: ObservableObject {
 
         do {
             // Call edge function and decode response directly
-            let editResponse: EditResponse = try await supabase.functions.invoke(
+            let editResponse: EditResponse = try await client.functions.invoke(
                 "process-edit",
                 options: FunctionInvokeOptions(body: requestBody)
             )
@@ -409,6 +435,12 @@ class SupabaseService: ObservableObject {
 
     /// Fetch templates for user's role
     func fetchTemplates(for roleType: RoleType) async throws -> [Template] {
+        guard let client = supabase else {
+            // Fallback to local templates if not configured
+            Logger.info("Supabase not configured, using local templates", category: Logger.network)
+            return Template.samples.filter { $0.isAvailableFor(role: roleType) }
+        }
+
         Logger.info("Fetching templates for role: \(roleType.rawValue)", category: Logger.network)
 
         struct TemplateRow: Decodable {
@@ -423,7 +455,7 @@ class SupabaseService: ObservableObject {
         }
 
         do {
-            let response: [TemplateRow] = try await supabase.database
+            let response: [TemplateRow] = try await client.database
                 .from("templates")
                 .select()
                 .eq("is_active", value: true)
@@ -465,15 +497,13 @@ class SupabaseService: ObservableObject {
 
     /// Increment template usage count
     func incrementTemplateUsage(templateId: String) async throws {
+        guard let client = supabase else { return }  // Silent return if not configured
+
         Logger.info("Incrementing usage count for template: \(templateId)", category: Logger.network)
 
         do {
-            struct UpdateData: Encodable {
-                let usage_count: Int
-            }
-
             // Increment usage_count in database
-            try await supabase.database
+            try await client.database
                 .from("templates")
                 .update(["usage_count": "usage_count + 1"])
                 .eq("id", value: templateId)
@@ -556,6 +586,7 @@ enum SupabaseError: LocalizedError {
     case imageProcessingFailed
     case brandKitLimitReached
     case notImplemented
+    case configurationError(String)  // P0-2 Fix: Added for graceful config handling
 
     var errorDescription: String? {
         switch self {
@@ -573,6 +604,8 @@ enum SupabaseError: LocalizedError {
             return "You've reached your brand kit limit. Upgrade to add more."
         case .notImplemented:
             return "This feature is coming soon."
+        case .configurationError(let message):
+            return "Configuration error: \(message)"
         }
     }
 }

@@ -86,6 +86,26 @@ extension String {
         let emailPred = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
         return emailPred.evaluate(with: self)
     }
+
+    // SEC-4 Fix: Input validation and sanitization for AI commands
+
+    /// Sanitize string for AI processing
+    /// Removes potential injection patterns and limits length
+    var sanitizedForAI: String {
+        self.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "<", with: "")
+            .replacingOccurrences(of: ">", with: "")
+            .replacingOccurrences(of: "{", with: "")
+            .replacingOccurrences(of: "}", with: "")
+            .prefix(500)
+            .description
+    }
+
+    /// Check if string is a valid edit command
+    var isValidEditCommand: Bool {
+        let trimmed = self.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed.count >= 3 && trimmed.count <= 500
+    }
 }
 
 // MARK: - UIImage Extensions

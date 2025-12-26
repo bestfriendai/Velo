@@ -11,9 +11,13 @@ import SwiftUI
 enum Constants {
     // MARK: - API Configuration
     enum API {
-        // Supabase
-        static let supabaseURL = ProcessInfo.processInfo.environment["SUPABASE_URL"] ?? ""
-        static let supabaseAnonKey = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"] ?? ""
+        // Supabase - P0-1 Fix: Use Secrets instead of ProcessInfo
+        static var supabaseURL: String {
+            Secrets.supabaseURL
+        }
+        static var supabaseAnonKey: String {
+            Secrets.supabaseAnonKey
+        }
 
         // Edge Functions
         static let processEditFunctionName = "process-edit"
@@ -26,6 +30,34 @@ enum Constants {
             guard let url = URL(string: supabaseURL) else { return nil }
             return url.appendingPathComponent("functions/v1/\(processEditFunctionName)")
         }
+    }
+
+    // MARK: - Component Sizes (CQ-2 Fix: Design Tokens)
+    enum ComponentSize {
+        // Icons
+        static let iconSmall: CGFloat = 40
+        static let iconMedium: CGFloat = 60
+        static let iconLarge: CGFloat = 70
+
+        // Avatars
+        static let avatarSmall: CGFloat = 32
+        static let avatarMedium: CGFloat = 48
+        static let avatarLarge: CGFloat = 64
+
+        // Buttons
+        static let buttonHeight: CGFloat = 48
+        static let inputHeight: CGFloat = 44
+        static let voiceButtonSize: CGFloat = 70
+        static let voiceButtonRingSize: CGFloat = 90
+
+        // Cards
+        static let cardImageHeight: CGFloat = 160
+        static let chatHeight: CGFloat = 200
+        static let photoPreviewSize: CGFloat = 100
+
+        // Role Cards
+        static let roleCardIconSize: CGFloat = 60
+        static let roleCardWidth: CGFloat = 160
     }
 
     // MARK: - App Configuration
@@ -64,7 +96,10 @@ enum Constants {
 
     // MARK: - RevenueCat
     enum RevenueCat {
-        static let apiKey = ProcessInfo.processInfo.environment["REVENUECAT_API_KEY"] ?? ""
+        // P0-1 Fix: Use Secrets instead of ProcessInfo
+        static var apiKey: String {
+            Secrets.revenueCatAPIKey
+        }
         static let proEntitlementID = "pro"
         static let businessEntitlementID = "business"
     }
