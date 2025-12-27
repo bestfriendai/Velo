@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct RoleSelectionView: View {
-    @StateObject private var supabaseService = SupabaseService.shared
+    @ObservedObject private var supabaseService = SupabaseService.shared
     @State private var selectedRole: RoleType?
     @State private var showHome = false
     @State private var isLoading = false
@@ -95,21 +95,15 @@ struct RoleSelectionView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(
-                        selectedRole != nil ?
                         LinearGradient(
-                            colors: gradientForRole(selectedRole!),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ) :
-                        LinearGradient(
-                            colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.3)],
+                            colors: selectedRole.map { gradientForRole($0) } ?? [Color.gray.opacity(0.3), Color.gray.opacity(0.3)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
                     .cornerRadius(Constants.CornerRadius.lg)
                     .shadow(
-                        color: selectedRole != nil ? gradientForRole(selectedRole!)[0].opacity(0.3) : .clear,
+                        color: selectedRole.map { gradientForRole($0)[0].opacity(0.3) } ?? .clear,
                         radius: 10,
                         x: 0,
                         y: 5

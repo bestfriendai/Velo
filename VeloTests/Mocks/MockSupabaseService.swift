@@ -106,7 +106,8 @@ class MockSupabaseService: ObservableObject {
             editedImageUrl: "https://example.com/edited.jpg",
             editsRemaining: 4,
             modelUsed: "gemini-2.5-flash-image",
-            processingTimeMs: 1500
+            processingTimeMs: 1500,
+            error: nil
         )
     }
 
