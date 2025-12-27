@@ -134,7 +134,7 @@ struct EditingInterfaceView: View {
                 Rectangle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                            colors: [Color.blue.opacity(0.3), Color.cyan.opacity(0.3)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -198,11 +198,14 @@ struct EditingInterfaceView: View {
                         ForEach(viewModel.messages) { message in
                             ChatBubble(message: message)
                                 .id(message.id)
+                                // UX-1: Accessibility
+                                .chatMessageAccessibility(message: message.text, isUser: message.isUser)
                         }
                     }
                     .padding()
                 }
-                .onChange(of: viewModel.messages.count) { _ in
+                // P1-5 Fix: Updated onChange syntax for iOS 17+
+                .onChange(of: viewModel.messages.count) { oldValue, newValue in
                     if let lastMessage = viewModel.messages.last {
                         withAnimation {
                             proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -210,7 +213,7 @@ struct EditingInterfaceView: View {
                     }
                 }
             }
-            .frame(height: 200)
+            .frame(height: Constants.ComponentSize.chatHeight)  // CQ-2: Use design token
             .background(Color(white: 0.05))
 
             Divider()
@@ -255,18 +258,20 @@ struct EditingInterfaceView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue, Color.purple],
+                            colors: [Color.blue, Color.cyan],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 70, height: 70)
+                    .frame(width: Constants.ComponentSize.voiceButtonSize,
+                           height: Constants.ComponentSize.voiceButtonSize)  // CQ-2: Use design token
                     .shadow(color: .blue.opacity(0.5), radius: 20, x: 0, y: 10)
 
                 if viewModel.isRecording {
                     Circle()
                         .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                        .frame(width: 90, height: 90)
+                        .frame(width: Constants.ComponentSize.voiceButtonRingSize,
+                               height: Constants.ComponentSize.voiceButtonRingSize)  // CQ-2: Use design token
                         .scaleEffect(viewModel.isRecording ? 1.2 : 1.0)
                         .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: viewModel.isRecording)
                 }
@@ -278,6 +283,8 @@ struct EditingInterfaceView: View {
         }
         .disabled(viewModel.isProcessing)
         .opacity(viewModel.isProcessing ? 0.5 : 1.0)
+        // UX-1: Accessibility
+        .voiceButtonAccessibility(isRecording: viewModel.isRecording, isProcessing: viewModel.isProcessing)
     }
 }
 

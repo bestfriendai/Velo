@@ -4,9 +4,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// SEC-1 Fix: Restrict CORS to specific origins instead of wildcard
+const ALLOWED_ORIGINS = [
+  'capacitor://localhost',           // iOS app in production
+  'http://localhost:3000',           // Local development
+  'http://localhost:8080',           // Alternative dev port
+  'https://velo-app.com',            // Production web domain (if applicable)
+]
+
+const getCorsHeaders = (origin: string | null) => {
+  // Check if origin is allowed
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin || '')
+    ? origin
+    : ALLOWED_ORIGINS[0] // Default to capacitor for iOS
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin || 'capacitor://localhost',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  }
 }
 
 interface EditRequest {
@@ -26,21 +42,31 @@ interface EditResponse {
 }
 
 serve(async (req) => {
+  // SEC-1: Get origin-specific CORS headers
+  const origin = req.headers.get('Origin')
+  const responseHeaders = getCorsHeaders(origin)
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: responseHeaders })
   }
 
   const startTime = Date.now()
 
   try {
+    // Get authorization header with null safety (P1-4 equivalent fix)
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('Missing authorization header')
+    }
+
     // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     )
@@ -58,8 +84,9 @@ serve(async (req) => {
     const requestBody: EditRequest = await req.json()
     const { command_text, image_base64, user_tier } = requestBody
 
+    // SEC-3 Fix: Avoid logging sensitive data, truncate command
     console.log(`Processing edit for user: ${user.id}`)
-    console.log(`Command: ${command_text}`)
+    console.log(`Command length: ${command_text.length} chars`)
     console.log(`User tier: ${user_tier}`)
 
     // Step 1: Check user's edit quota
@@ -80,7 +107,7 @@ serve(async (req) => {
           processing_time_ms: Date.now() - startTime,
         } as EditResponse),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' },
           status: 403,
         }
       )
@@ -219,13 +246,14 @@ serve(async (req) => {
     return new Response(
       JSON.stringify(response),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
 
   } catch (error) {
-    console.error('Error processing edit:', error)
+    // SEC-3 Fix: Log error type, not full message (may contain sensitive data)
+    console.error('Error processing edit:', error.name || 'Unknown error')
 
     return new Response(
       JSON.stringify({
@@ -236,7 +264,7 @@ serve(async (req) => {
         processing_time_ms: Date.now() - startTime,
       } as EditResponse),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' },
         status: 500,
       }
     )

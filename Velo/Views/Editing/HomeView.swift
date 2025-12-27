@@ -380,7 +380,7 @@ struct RecentPhotoCard: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                        colors: [Color.blue.opacity(0.3), Color.cyan.opacity(0.3)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -437,7 +437,7 @@ struct TemplateCard: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [Color.purple.opacity(0.3), Color.pink.opacity(0.3)],
+                        colors: [Color.pink.opacity(0.3), Color.red.opacity(0.3)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -517,7 +517,7 @@ struct CommunityPostCard: View {
                 Rectangle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                            colors: [Color.blue.opacity(0.3), Color.cyan.opacity(0.3)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )

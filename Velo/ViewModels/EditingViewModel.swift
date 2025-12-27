@@ -64,8 +64,10 @@ class EditingViewModel: ObservableObject {
     // MARK: - Voice Recognition Setup
 
     private func setupVoiceRecognition() {
+        // P1-3 Fix: [weak self] already present - Combine subscriptions are correct
         // Listen to voice service transcription
         voiceService.$transcribedText
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] text in
                 guard let self = self, !text.isEmpty else { return }
                 self.messageText = text
@@ -74,6 +76,7 @@ class EditingViewModel: ObservableObject {
 
         // Listen to recording state
         voiceService.$isRecording
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] recording in
                 self?.isRecording = recording
             }
@@ -81,6 +84,7 @@ class EditingViewModel: ObservableObject {
 
         // Listen to errors
         voiceService.$errorMessage
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] error in
                 if let error = error {
                     self?.errorMessage = error
@@ -101,11 +105,13 @@ class EditingViewModel: ObservableObject {
     /// Start voice recording
     func startVoiceRecording() async {
         Logger.info("Starting voice recording", category: Logger.voice)
+        HapticManager.voiceRecordingStart()  // UX-3: Haptic feedback
 
         // Request authorization if needed
         if voiceService.authorizationStatus != .authorized {
             let authorized = await voiceService.requestAuthorization()
             if !authorized {
+                HapticManager.error()
                 errorMessage = "Speech recognition permission denied. Please enable it in Settings."
                 return
             }
@@ -115,6 +121,7 @@ class EditingViewModel: ObservableObject {
             try await voiceService.startRecording()
         } catch {
             Logger.error("Failed to start recording: \(error.localizedDescription)", category: Logger.voice)
+            HapticManager.error()
             errorMessage = "Failed to start recording: \(error.localizedDescription)"
         }
     }
@@ -122,6 +129,7 @@ class EditingViewModel: ObservableObject {
     /// Stop voice recording
     func stopVoiceRecording() {
         Logger.info("Stopping voice recording", category: Logger.voice)
+        HapticManager.voiceRecordingStop()  // UX-3: Haptic feedback
         voiceService.stopRecording()
 
         // Auto-send the transcribed message
@@ -134,6 +142,7 @@ class EditingViewModel: ObservableObject {
 
     /// Toggle voice recording on/off
     func toggleVoiceRecording() {
+        HapticManager.voiceButtonTap()  // UX-3: Haptic feedback
         Task {
             if isRecording {
                 stopVoiceRecording()
@@ -147,21 +156,30 @@ class EditingViewModel: ObservableObject {
 
     /// Send a text or voice message
     func sendMessage() async {
-        guard !messageText.isEmpty else { return }
+        // SEC-4 Fix: Input validation
+        guard messageText.isValidEditCommand else {
+            if messageText.isEmpty {
+                return
+            }
+            errorMessage = "Please enter a valid editing command (3-500 characters)"
+            return
+        }
 
-        let userMessage = messageText
-        Logger.info("Sending message: \(userMessage)", category: Logger.general)
+        // SEC-4 Fix: Sanitize the command
+        let sanitizedMessage = messageText.sanitizedForAI
+        Logger.info("Sending message: \(sanitizedMessage.prefix(50))...", category: Logger.general)
 
         // Add user message to chat
-        messages.append(ChatMessage(text: userMessage, isUser: true))
+        messages.append(ChatMessage(text: sanitizedMessage, isUser: true))
         messageText = ""
 
         // Process the edit request
-        await processEdit(command: userMessage)
+        await processEdit(command: sanitizedMessage)
     }
 
     /// Apply a suggestion
     func applySuggestion(_ suggestion: EditSuggestion) {
+        HapticManager.suggestionTap()  // UX-3: Haptic feedback
         messageText = suggestion.promptText
         Task {
             await sendMessage()
@@ -215,6 +233,7 @@ class EditingViewModel: ObservableObject {
 
         } catch {
             Logger.error("Edit failed: \(error.localizedDescription)", category: Logger.general)
+            HapticManager.editFailed()  // UX-3: Haptic feedback
             errorMessage = error.localizedDescription
 
             // Update chat with error
@@ -230,20 +249,16 @@ class EditingViewModel: ObservableObject {
     private func downloadEditedImage(from urlString: String) async {
         Logger.info("Downloading edited image", category: Logger.general)
 
-        guard let url = URL(string: urlString) else {
-            Logger.error("Invalid image URL", category: Logger.general)
-            return
-        }
-
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let image = UIImage(data: data) {
-                self.editedImage = image
-                showBeforeAfter = true
-                Logger.info("Edited image downloaded successfully", category: Logger.general)
-            }
+            // PERF-2: Use ImageCache for caching
+            let image = try await ImageCache.shared.image(for: urlString)
+            self.editedImage = image
+            showBeforeAfter = true
+            HapticManager.editComplete()  // UX-3: Haptic feedback on success
+            Logger.info("Edited image downloaded successfully", category: Logger.general)
         } catch {
             Logger.error("Failed to download image: \(error.localizedDescription)", category: Logger.general)
+            HapticManager.error()
             errorMessage = "Failed to download edited image"
         }
     }
@@ -270,7 +285,7 @@ class EditingViewModel: ObservableObject {
                 icon: "sparkles",
                 text: "Enhance colors",
                 promptText: "Enhance the colors in this photo",
-                color: .purple
+                color: .teal
             ),
             EditSuggestion(
                 icon: "crop",
@@ -291,6 +306,7 @@ class EditingViewModel: ObservableObject {
         }
 
         UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        HapticManager.success()  // UX-3: Haptic feedback
 
         messages.append(ChatMessage(
             text: "Your edited photo has been saved to your library!",
@@ -307,6 +323,7 @@ class EditingViewModel: ObservableObject {
     func resetToOriginal() {
         editedImage = nil
         showBeforeAfter = false
+        HapticManager.mediumImpact()  // UX-3: Haptic feedback
 
         messages.append(ChatMessage(
             text: "Reset to original image. What would you like to change?",
@@ -314,11 +331,8 @@ class EditingViewModel: ObservableObject {
         ))
     }
 
-    // MARK: - Cleanup
-
-    deinit {
-        cancellables.forEach { $0.cancel() }
-    }
+    // P1-3 Fix: Removed deinit - AnyCancellable automatically cancels when deallocated
+    // With @StateObject, the view model lifecycle is managed by SwiftUI
 }
 
 // MARK: - Supporting Models

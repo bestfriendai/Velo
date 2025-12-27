@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// User role types that determine template filtering and personalization
 enum RoleType: String, Codable, CaseIterable {
@@ -42,6 +43,33 @@ enum RoleType: String, Codable, CaseIterable {
         case .realtor: return "Fast property photo editing"
         case .business: return "Social media content creation"
         case .explorer: return "I want to see what's possible"
+        }
+    }
+
+    // P1-1 Fix: Add gradient colors for roles (replacing OldUserRole.gradient)
+    var gradient: [Color] {
+        switch self {
+        case .parent: return Constants.Colors.parentGradient
+        case .salon: return Constants.Colors.salonGradient
+        case .realtor: return Constants.Colors.realtorGradient
+        case .business: return Constants.Colors.businessGradient
+        case .explorer: return Constants.Colors.explorerGradient
+        }
+    }
+
+    // P1-1 Fix: Add features list for roles (replacing OldUserRole.features)
+    var features: [String] {
+        switch self {
+        case .parent:
+            return ["Fix closed eyes", "Group photo touch-ups", "Event highlights"]
+        case .salon:
+            return ["Before/after transformations", "Professional lighting", "Brand logo placement"]
+        case .realtor:
+            return ["Property enhancement", "Batch processing", "Sky replacement"]
+        case .business:
+            return ["Product photos", "Social media ready", "Brand consistency"]
+        case .explorer:
+            return ["Creative filters", "Quick enhancements", "Easy sharing"]
         }
     }
 }
