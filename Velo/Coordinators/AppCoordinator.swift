@@ -173,7 +173,7 @@ final class AppCoordinator: ObservableObject {
 
 /// Root view that switches based on app state
 struct RootView: View {
-    @StateObject private var coordinator = AppCoordinator()
+    @EnvironmentObject var coordinator: AppCoordinator
 
     var body: some View {
         Group {

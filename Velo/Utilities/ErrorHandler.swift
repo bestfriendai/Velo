@@ -195,15 +195,17 @@ struct ErrorAlertModifier: ViewModifier {
                 }
             } message: {
                 if let error = errorHandler.currentError {
-                    VStack {
-                        Text(error.errorDescription ?? "An error occurred")
-                        if let suggestion = error.actionSuggestion {
-                            Text(suggestion)
-                                .font(.caption)
-                        }
-                    }
+                    Text(errorAlertMessage(for: error))
                 }
             }
+    }
+
+    private func errorAlertMessage(for error: AppError) -> String {
+        var message = error.errorDescription ?? "An error occurred"
+        if let suggestion = error.actionSuggestion {
+            message += "\n\n\(suggestion)"
+        }
+        return message
     }
 }
 
