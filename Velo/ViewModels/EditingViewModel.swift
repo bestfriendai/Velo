@@ -285,7 +285,7 @@ class EditingViewModel: ObservableObject {
                 icon: "sparkles",
                 text: "Enhance colors",
                 promptText: "Enhance the colors in this photo",
-                color: .purple
+                color: .teal
             ),
             EditSuggestion(
                 icon: "crop",

@@ -109,7 +109,7 @@ enum Constants {
         // Brand Colors
         static let brandBlue = Color.blue
         static let brandCyan = Color.cyan
-        static let brandPurple = Color.purple
+        static let brandTeal = Color.teal
         static let brandPink = Color.pink
         static let brandGreen = Color.green
         static let brandMint = Color.mint
@@ -119,10 +119,10 @@ enum Constants {
         // Gradients
         static let onboardingGradient = [Color.black, Color.blue.opacity(0.2)]
         static let parentGradient = [Color.blue, Color.cyan]
-        static let salonGradient = [Color.purple, Color.pink]
+        static let salonGradient = [Color.pink, Color.red]
         static let realtorGradient = [Color.green, Color.mint]
         static let businessGradient = [Color.orange, Color.red]
-        static let explorerGradient = [Color.pink, Color.purple]
+        static let explorerGradient = [Color.cyan, Color.teal]
 
         // UI Elements
         static let backgroundDark = Color.black

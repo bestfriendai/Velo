@@ -53,7 +53,7 @@ struct ContentView: View {
                                 title: "Role Selection",
                                 description: "Customize experience by user type",
                                 icon: "person.3.fill",
-                                gradient: [Color.purple, Color.pink]
+                                gradient: [Color.pink, Color.red]
                             ) {
                                 selectedMockup = .roleSelection
                             }

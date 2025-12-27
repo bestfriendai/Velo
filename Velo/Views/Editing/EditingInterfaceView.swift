@@ -134,7 +134,7 @@ struct EditingInterfaceView: View {
                 Rectangle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                            colors: [Color.blue.opacity(0.3), Color.cyan.opacity(0.3)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -258,7 +258,7 @@ struct EditingInterfaceView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.blue, Color.purple],
+                            colors: [Color.blue, Color.cyan],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )

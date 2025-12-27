@@ -60,7 +60,7 @@ struct EmptyStateView: View {
                         .padding(.vertical, 12)
                         .background(
                             LinearGradient(
-                                colors: [Color.blue, Color.purple],
+                                colors: [Color.blue, Color.cyan],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
