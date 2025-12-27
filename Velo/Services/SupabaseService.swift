@@ -502,11 +502,10 @@ class SupabaseService: ObservableObject {
         Logger.info("Incrementing usage count for template: \(templateId)", category: Logger.network)
 
         do {
-            // Increment usage_count in database
+            // Use RPC function to properly increment numeric value
+            // This avoids the issue of passing a string literal instead of SQL expression
             try await client.database
-                .from("templates")
-                .update(["usage_count": "usage_count + 1"])
-                .eq("id", value: templateId)
+                .rpc("increment_template_usage", params: ["template_uuid": templateId])
                 .execute()
 
             Logger.info("Template usage count incremented", category: Logger.network)

@@ -90,21 +90,29 @@ extension String {
     // SEC-4 Fix: Input validation and sanitization for AI commands
 
     /// Sanitize string for AI processing
-    /// Removes potential injection patterns and limits length
+    /// Removes potential injection patterns, newlines, and limits length
     var sanitizedForAI: String {
         self.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")  // Remove internal newlines
+            .replacingOccurrences(of: "\r", with: " ")  // Remove carriage returns
             .replacingOccurrences(of: "<", with: "")
             .replacingOccurrences(of: ">", with: "")
             .replacingOccurrences(of: "{", with: "")
             .replacingOccurrences(of: "}", with: "")
+            .replacingOccurrences(of: "[", with: "")
+            .replacingOccurrences(of: "]", with: "")
+            .components(separatedBy: .whitespaces)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
             .prefix(500)
             .description
     }
 
     /// Check if string is a valid edit command
+    /// Validates the sanitized version to prevent bypasses
     var isValidEditCommand: Bool {
-        let trimmed = self.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && trimmed.count >= 3 && trimmed.count <= 500
+        let sanitized = self.sanitizedForAI
+        return !sanitized.isEmpty && sanitized.count >= 3 && sanitized.count <= 500
     }
 }
 

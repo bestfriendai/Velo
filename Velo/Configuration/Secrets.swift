@@ -40,7 +40,9 @@ enum Secrets {
     static var isConfigured: Bool {
         !supabaseURL.isEmpty &&
         !supabaseAnonKey.isEmpty &&
-        !supabaseAnonKey.contains("placeholder")
+        !supabaseAnonKey.contains("placeholder") &&
+        !revenueCatAPIKey.isEmpty &&
+        !revenueCatAPIKey.contains("placeholder")
     }
 
     /// Error message when configuration is missing
@@ -52,6 +54,9 @@ enum Secrets {
         }
         if supabaseAnonKey.isEmpty || supabaseAnonKey.contains("placeholder") {
             return "Supabase Anonymous Key is not configured"
+        }
+        if revenueCatAPIKey.isEmpty || revenueCatAPIKey.contains("placeholder") {
+            return "RevenueCat API Key is not configured"
         }
         return "Unknown configuration error"
     }

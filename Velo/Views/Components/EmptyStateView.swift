@@ -72,7 +72,7 @@ struct EmptyStateView: View {
             }
         }
         .padding(Constants.Spacing.xxl)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)  // Use .contain to keep button accessible
     }
 }
 

@@ -8,15 +8,18 @@
 import UIKit
 
 /// Manager for haptic feedback throughout the app
+/// Note: All haptic calls are dispatched to main thread as required by UIKit
 enum HapticManager {
     // MARK: - Impact Feedback
 
     /// Trigger impact feedback
     /// - Parameter style: The style of impact (light, medium, heavy, soft, rigid)
     static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
-        let generator = UIImpactFeedbackGenerator(style: style)
-        generator.prepare()
-        generator.impactOccurred()
+        DispatchQueue.main.async {
+            let generator = UIImpactFeedbackGenerator(style: style)
+            generator.prepare()
+            generator.impactOccurred()
+        }
     }
 
     /// Light impact - for subtle UI interactions
@@ -39,9 +42,11 @@ enum HapticManager {
     /// Trigger notification feedback
     /// - Parameter type: The type of notification (success, warning, error)
     static func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(type)
+        DispatchQueue.main.async {
+            let generator = UINotificationFeedbackGenerator()
+            generator.prepare()
+            generator.notificationOccurred(type)
+        }
     }
 
     /// Success notification - for completed actions
@@ -63,9 +68,11 @@ enum HapticManager {
 
     /// Selection changed feedback - for UI selections
     static func selection() {
-        let generator = UISelectionFeedbackGenerator()
-        generator.prepare()
-        generator.selectionChanged()
+        DispatchQueue.main.async {
+            let generator = UISelectionFeedbackGenerator()
+            generator.prepare()
+            generator.selectionChanged()
+        }
     }
 
     // MARK: - Convenience Methods for App Actions

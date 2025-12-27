@@ -25,12 +25,6 @@ const getCorsHeaders = (origin: string | null) => {
   }
 }
 
-// Fallback headers (deprecated, for backward compatibility)
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 interface EditRequest {
   user_id: string
   command_text: string

@@ -90,7 +90,9 @@ jobs:
 
       - name: Check for force unwraps
         run: |
-          if grep -r "!" --include="*.swift" Velo/ | grep -v "import\|//" | head -20; then
+          # Match force unwraps: identifier followed by ! (excluding != and string literals)
+          # Pattern: word character followed by ! not followed by = or inside quotes
+          if grep -rE "[a-zA-Z0-9_\)]\!($|[^=])" --include="*.swift" Velo/ | grep -v "import\|//\|\".*!.*\"\|#if\|#endif" | head -20; then
             echo "::warning::Found potential force unwraps - review needed"
           fi
 

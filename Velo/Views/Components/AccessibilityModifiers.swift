@@ -24,16 +24,15 @@ extension View {
             .accessibilityValue(isEnabled ? "" : "Disabled")
     }
 
-    /// Make an image accessible
+    /// Make an image accessible (decorative images are hidden from VoiceOver)
+    @ViewBuilder
     func accessibleImage(label: String, isDecorative: Bool = false) -> some View {
         if isDecorative {
-            return self.accessibilityHidden(true)
-                .eraseToAnyView()
+            self.accessibilityHidden(true)
         } else {
-            return self
+            self
                 .accessibilityLabel(label)
                 .accessibilityAddTraits(.isImage)
-                .eraseToAnyView()
         }
     }
 
@@ -49,11 +48,6 @@ extension View {
         self
             .accessibilityElement(children: .combine)
             .accessibilityLabel(label ?? "")
-    }
-
-    /// Type eraser for conditional modifiers
-    private func eraseToAnyView() -> AnyView {
-        AnyView(self)
     }
 }
 

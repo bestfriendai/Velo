@@ -275,7 +275,8 @@ struct MainTabView: View {
 
     /// Create a legacy OldUserRole from the current profile (temporary until HomeView is refactored)
     private func createLegacyRole() -> OldUserRole {
-        let profile = SupabaseService.shared.currentUserProfile
+        // Use injected dependency via coordinator instead of directly accessing singleton
+        let profile = coordinator.dependencies.supabaseService.currentUserProfile
         let roleType = profile?.roleType ?? .explorer
 
         return OldUserRole(

@@ -63,7 +63,7 @@ opt_in_rules:
 # Disabled rules
 disabled_rules:
   - trailing_whitespace  # Too noisy
-  - line_length  # We'll configure this instead
+  # Note: line_length is configured below, not disabled
 
 # Configure line length
 line_length:

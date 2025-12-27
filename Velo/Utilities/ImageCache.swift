@@ -29,8 +29,12 @@ actor ImageCache {
 
     /// Store an image in cache
     func set(_ image: UIImage, for key: String) {
-        // Calculate approximate cost in bytes
-        let cost = Int(image.size.width * image.size.height * 4) // 4 bytes per pixel (RGBA)
+        // Calculate approximate cost in bytes using actual pixel dimensions
+        // Multiply by scale to account for retina displays (2x or 3x)
+        let scale = image.scale
+        let pixelWidth = image.size.width * scale
+        let pixelHeight = image.size.height * scale
+        let cost = Int(pixelWidth * pixelHeight * 4) // 4 bytes per pixel (RGBA)
         cache.setObject(image, forKey: key as NSString, cost: cost)
     }
 
@@ -89,8 +93,9 @@ actor ImageCache {
         do {
             let image = try await task.value
 
-            // Cache the result
-            let cost = Int(image.size.width * image.size.height * 4)
+            // Cache the result with accurate pixel-based cost calculation
+            let scale = image.scale
+            let cost = Int(image.size.width * scale * image.size.height * scale * 4)
             cache.setObject(image, forKey: urlString as NSString, cost: cost)
 
             // Clean up in-flight request
